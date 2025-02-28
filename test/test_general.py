@@ -33,7 +33,7 @@ class TestGeneral:
         my_latitude = 40.
         my_solar_position = SolarPosition(my_datetime, my_latitude)
 
-        leaf_area_grid = np.load("data/leaf_area_grid.npy")
+        leaf_area_grid = np.load("test/data/leaf_area_grid.npy")
         my_leaf_area = LeafArea.from_uniformgrid(leaf_area_grid)
 
         my_flat_env = Environment(my_leaf_area)
@@ -49,7 +49,7 @@ class TestGeneral:
         my_latitude = 40.
         my_solar_position = SolarPosition(my_datetime, my_latitude)
 
-        leaf_area_grid = np.load("data/leaf_area_grid.npy")
+        leaf_area_grid = np.load("test/data/leaf_area_grid.npy")
         my_leaf_area = LeafArea.from_uniformgrid(leaf_area_grid)
 
         my_terrain = Terrain(np.load("test/data/terrain_input300.npy"))
@@ -65,7 +65,7 @@ class TestGeneral:
         my_latitude = 40.
         my_solar_position = SolarPosition(my_datetime, my_latitude)
 
-        leaf_area_grid = np.load("data/leaf_area_grid.npy")
+        leaf_area_grid = np.load("test/data/leaf_area_grid.npy")
         my_leaf_area = LeafArea.from_uniformgrid(leaf_area_grid)
 
         my_terrain = Terrain(np.load("test/data/terrain_input300.npy"))

@@ -15,20 +15,20 @@ def get_requirements(fname):
     return reqs
 
 
-def get_version():
-    """Get the version number."""
-    with urllib.request.urlopen(
-        "https://api.github.com/repos/silvxlabs/leaflux-core/releases/latest"
-    ) as response:
-        data = json.loads(response.read().decode("utf-8"))
-    version = data["tag_name"]
-    return version[1:]  # Remove the leading "v" from the version number
+# def get_version():
+#     """Get the version number."""
+#     with urllib.request.urlopen(
+#         "https://api.github.com/repos/silvxlabs/leaflux-core/releases/latest"
+#     ) as response:
+#         data = json.loads(response.read().decode("utf-8"))
+#     version = data["tag_name"]
+#     return version[1:]  # Remove the leading "v" from the version number
 
 
 NAME = "leaflux"
 DESCRIPTION = "Core algorithms for the Leaflux project"
 LONG_DESCRIPTION = read_file("README.md")
-VERSION = get_version()
+VERSION = "0.1.0" #get_version()
 LICENSE = "MIT"
 URL = "https://github.com/silvxlabs/leaflux-core"
 PROJECT_URLS = {"Bug Tracker": f"{URL}/issues"}

@@ -12,7 +12,7 @@ class TestLeafArea:
 
     def test_from_uniformgrid(self):
         input = np.load("test/data/leaf_area_grid.npy")
-        expected_output = np.load("test/data/leafarea_from_uniformgird_test_1.npy") #np.load("test/data/leafarea_from_init_test_1.npy")
+        expected_output = np.load("test/data/leafarea_from_uniformgird_test_1.npy")
         output = LeafArea.from_uniformgrid(input).leaf_area
 
         np.testing.assert_array_equal(expected_output, output)

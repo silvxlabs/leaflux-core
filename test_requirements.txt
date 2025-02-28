@@ -1,0 +1,7 @@
+numpy
+datetime
+pvlib
+scipy
+sparse
+numba
+pytest

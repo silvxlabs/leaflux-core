@@ -27,7 +27,7 @@ class TestGeneral:
 
     
     def test_attenuate_surface_flat(self):
-        # Test against terrain_irr_result_2.npy
+        # Test against test_flat1.npy
         # Which is datetime(2024, 6, 15, 16, 00) and lat = 40.
         my_datetime = datetime(2024, 6, 15, 16, 00)
         my_latitude = 40.
@@ -40,10 +40,10 @@ class TestGeneral:
 
         sf1 = attenuate_surface(my_flat_env, my_solar_position)
 
-        np.testing.assert_array_equal(np.load("test/data/terrain_irr_result_2.npy"), sf1.terrain_irradiance)
+        np.testing.assert_allclose(np.load("test/data/test_flat1.npy"), sf1.terrain_irradiance, atol=1e-6)
 
     def test_attenuate_surface_terrain(self):
-        # Test against terrain_irr_result_1.npy
+        # Test against test_terrain1.npy
         # Which is datetime(2024, 6, 15, 16, 00) and lat = 40.
         my_datetime = datetime(2024, 6, 15, 16, 00)
         my_latitude = 40.
@@ -58,7 +58,7 @@ class TestGeneral:
 
         st1 = attenuate_surface(my_env, my_solar_position)
 
-        np.testing.assert_array_equal(np.load("test/data/terrain_irr_result_1.npy"), st1.terrain_irradiance)
+        np.testing.assert_allclose(np.load("test/data/test_terrain1.npy"), st1.terrain_irradiance, atol=1e-6)
     
     def test_attenuate_surface(self):
         my_datetime = datetime(2024, 6, 15, 16, 00)

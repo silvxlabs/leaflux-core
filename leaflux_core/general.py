@@ -118,10 +118,11 @@ def _attenuate_surface_terrain(env: Environment, sol: SolarPosition, extn: float
     )
 
     # Make irr 0 if value is not max (is in shadow)
+    epsilon = 1e-6
     terrain_stack[:, 3] = np.where(
-        np.abs(terrain_stack[:, 2]) >= terrain_max[terrain_stack[:, 0].astype(int), terrain_stack[:, 1].astype(int)],
-        1, 
-        0
+        np.abs(terrain_stack[:, 2]) >= terrain_max[terrain_stack[:, 0].astype(int), terrain_stack[:, 1].astype(int)]-epsilon,
+        1., 
+        0.
     )
 
     # Readjust terrain coords

@@ -31,7 +31,7 @@ LONG_DESCRIPTION = read_file("README.md")
 VERSION = "0.1.0" #get_version()
 LICENSE = "MIT"
 URL = "https://github.com/silvxlabs/leaflux-core"
-PROJECT_URLS = {"Bug Tracker": f"{URL}/issues"}
+# PROJECT_URLS = {"Bug Tracker": f"{URL}/issues"}
 INSTALL_REQUIRES = [
     get_requirements("requirements.txt")
 ]
@@ -53,7 +53,7 @@ setup(
     long_description_content_type="text/markdown",
     license=LICENSE,
     url=URL,
-    project_urls=PROJECT_URLS,
+    # project_urls=PROJECT_URLS,
     classifiers=[
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
@@ -68,7 +68,7 @@ setup(
     ],
     package_dir={"": "."},
     packages=find_packages(exclude=["docs", "tests", "data"]),
-    package_data={"leaflux_core"},
+    # package_data={"leaflux_core"},
     include_package_data=True,
     install_requires=INSTALL_REQUIRES,
     # extras_require=EXTRAS_REQUIRE,

@@ -28,7 +28,7 @@ def get_requirements(fname):
 NAME = "leaflux"
 DESCRIPTION = "Core algorithms for the Leaflux project"
 LONG_DESCRIPTION = read_file("README.md")
-VERSION = "0.1.0" #get_version()
+VERSION = "0.1.1" #get_version()
 LICENSE = "MIT"
 URL = "https://github.com/silvxlabs/leaflux-core"
 # PROJECT_URLS = {"Bug Tracker": f"{URL}/issues"}

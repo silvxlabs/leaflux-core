@@ -1,7 +1,7 @@
 import pytest
 
-from leaflux_core.dependencies import *
-from leaflux_core.solar import *
+from leaflux.dependencies import *
+from leaflux.solar import *
 
 class TestSolar:
     def test_init(self):

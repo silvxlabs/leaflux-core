@@ -1,4 +1,4 @@
-from leaflux_core.irradiance import *
+from leaflux.irradiance import *
 
 class TestIrradiance:
     def test_init(self):

@@ -1,9 +1,9 @@
 import pytest 
 
-from leaflux_core.dependencies import *
-from leaflux_core.general import _get_rot_mat, _attenuate_surface_flat, _attenuate_surface_terrain, attenuate_surface
-from leaflux_core.solar import *
-from leaflux_core.environment import *
+from leaflux.dependencies import *
+from leaflux.general import _get_rot_mat, _attenuate_surface_flat, _attenuate_surface_terrain, attenuate_surface
+from leaflux.solar import *
+from leaflux.environment import *
 
 class TestGeneral:
     @pytest.mark.parametrize(

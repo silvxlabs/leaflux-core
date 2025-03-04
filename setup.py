@@ -15,36 +15,26 @@ def get_requirements(fname):
     return reqs
 
 
-# def get_version():
-#     """Get the version number."""
-#     with urllib.request.urlopen(
-#         "https://api.github.com/repos/silvxlabs/leaflux-core/releases/latest"
-#     ) as response:
-#         data = json.loads(response.read().decode("utf-8"))
-#     version = data["tag_name"]
-#     return version[1:]  # Remove the leading "v" from the version number
+def get_version():
+    """Get the version number."""
+    with urllib.request.urlopen(
+        "https://api.github.com/repos/silvxlabs/leaflux-core/releases/latest"
+    ) as response:
+        data = json.loads(response.read().decode("utf-8"))
+    version = data["tag_name"]
+    return version[1:]  # Remove the leading "v" from the version number
 
 
 NAME = "leaflux"
 DESCRIPTION = "Core algorithms for the Leaflux project"
 LONG_DESCRIPTION = read_file("README.md")
-VERSION = "0.1.1" #get_version()
+VERSION = get_version()
 LICENSE = "MIT"
 URL = "https://github.com/silvxlabs/leaflux-core"
-# PROJECT_URLS = {"Bug Tracker": f"{URL}/issues"}
 INSTALL_REQUIRES = [
     get_requirements("requirements.txt")
 ]
 
-# EXTRAS_REQUIRE = {
-#     # "plotting": [
-#     #     "pyvista",
-#     # ],
-#     # "test": [
-#     #     "pytest",
-#     #     "matplotlib",
-#     # ],
-# }
 setup(
     name=NAME,
     version=VERSION,
@@ -68,9 +58,7 @@ setup(
     ],
     package_dir={"": "."},
     packages=find_packages(exclude=["docs", "tests", "data"]),
-    # package_data={"leaflux_core"},
     include_package_data=True,
     install_requires=INSTALL_REQUIRES,
-    # extras_require=EXTRAS_REQUIRE,
     python_requires=">=3.9",
 )

@@ -10,7 +10,7 @@ my_leaf_area = LeafArea(np.load("path/to/my/leafarea.npy"))
 ```
     
 
-If you are loading from a dense uniform grid, load using the` from_uniformgrid` constructor.
+If you are loading from a dense uniform grid, load using the `from_uniformgrid` constructor.
 
     
 ```
@@ -54,7 +54,4 @@ my_solar_position = SolarPosition(my_datetime, my_latitude)
 my_result = attenuate_surface(my_environment, my_solar_position)
 my_terrain_irradiance = my_result.terrain_irradiance
 ```
-
-## How to access solar irradiance data from NREL to scale your outputs
-- Should I do this?
 

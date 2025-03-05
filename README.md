@@ -8,7 +8,7 @@ typically available. It is a Python package that aims to be easy to use and is
 compatible with standard numpy data types.
 
 ## Links
-[Documentation home](https://silvxlabs.github.io/leaflux/)
+[Documentation home](https://silvxlabs.github.io/leaflux-core/)
 
 [PyPi package](https://pypi.org/project/leaflux/)
 
@@ -24,7 +24,7 @@ Install LeafLux as shown above, then include it in your project like:
 
 `import leaflux`
 
-You can then follow a [how to guide](https://silvxlabs.github.io/leaflux/how-to-guides/) to learn how 
+You can then follow a [how to guide](https://silvxlabs.github.io/leaflux-core/how-to-guides/) to learn how 
 to use LeafLux to generate irradiance information. 
 
 ## Issues

@@ -6,7 +6,8 @@ class TestLeafArea:
     def test_init(self):
         input = np.load("test/data/leaf_area_grid.npy")
         expected_output = np.load("test/data/leafarea_from_init_test_1.npy")
-        output = LeafArea(input).leaf_area
+
+        output = LeafArea(input, input.shape[1], input.shape[0]).leaf_area
 
         np.testing.assert_array_equal(expected_output, output)
 
@@ -21,6 +22,7 @@ class TestTerrain:
     def test_init(self):
         input = np.load("test/data/terrain_input300.npy")
         expected_output = np.load("test/data/terrain_output300.npy")
+
         output = Terrain(input)
 
         np.testing.assert_array_equal(expected_output, output.terrain)

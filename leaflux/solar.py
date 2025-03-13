@@ -66,5 +66,3 @@ class SolarPosition:
         vec = np.array([i, j, k])
         norm = np.linalg.norm(vec)
         self.light_vector = np.array([i/norm, j/norm, k/norm])
-
-        # print("timestamp: ", self.timestamp, " lat: ", self.latitude, " light vector: ", self.light_vector[0], ", ", self.light_vector[1], ", ", self.light_vector[2])

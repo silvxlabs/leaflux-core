@@ -1,4 +1,5 @@
-:::leaflux.general
-:::leaflux.environment
-:::leaflux.solar
-:::leaflux.irradiance
+# Reference
+::: leaflux.general
+    handler: python
+    options:
+      show_root_heading: false

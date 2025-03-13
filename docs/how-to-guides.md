@@ -2,15 +2,19 @@
 **Load a leaf area grid**
 
 To load from an existing sparse numpy ND Array with shape (N, 4), you can 
-use the default constructor.
+use the default constructor. You must also provide the width and height of the
+area the leaf area is describing. This should be the same width and height as the
+Terrain if you are providing one.
 
     
 ```
-my_leaf_area = LeafArea(np.load("path/to/my/leafarea.npy"))
+my_leaf_area = LeafArea(np.load("path/to/my/leafarea.npy"), my_leaf_area_width, my_leaf_area_height)
 ```
     
 
-If you are loading from a dense uniform grid, load using the `from_uniformgrid` constructor.
+If you are loading from a dense uniform grid, load using the `from_uniformgrid` constructor. This grid 
+is expected to have shape (y, x, z) where each coordinate maps to a leaf area value. y is expected to run 
+north to south. Width and height are inferred from grid shape.
 
     
 ```

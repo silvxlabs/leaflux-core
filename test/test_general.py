@@ -80,7 +80,7 @@ class TestGeneral:
 
         assert (np.abs(actual_sum - expected_sum) / expected_sum) < 0.25
 
-        # np.testing.assert_allclose(expected, actual, atol=1e-6)
+        np.testing.assert_allclose(expected, actual, atol=1e-6)
     
     def test_attenuate_surface(self):
         my_datetime = datetime(2024, 6, 15, 16, 00)

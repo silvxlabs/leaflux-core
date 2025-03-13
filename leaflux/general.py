@@ -1,4 +1,4 @@
-"""LeafFlux Core General Functions"""
+"""Reference for all user available classes and functions."""
 from .dependencies import *
 
 from .environment import *
@@ -35,26 +35,24 @@ def _get_rot_mat(solar_vector: np.array) -> np.ndarray:
     i = np.eye(3, dtype=float) # Identity
 
     # Rodrigues formula
-    # print(i + np.sin(theta)*k_mat + (1-np.cos(theta))*(k_mat@k_mat))
     return i + np.sin(theta)*k_mat + (1.0-np.cos(theta))*(k_mat@k_mat)
 
 # Light attenuation algorithm for flat surface
 def _attenuate_surface_flat(env: Environment, sol: SolarPosition, extn: float) -> RelativeIrradiance:
-    width = np.max(env.leaf_area.leaf_area[:, 0]).astype(int)
-    height = np.max(env.leaf_area.leaf_area[:, 1]).astype(int)
 
     # 1) Project points onto the z=0 plane along the solar vector
-    leaf_area_surface_grid = np.zeros((width, height))
     projection_distances = - env.leaf_area.leaf_area[:, 2] / sol.light_vector[2]
     projected_points = (
         env.leaf_area.leaf_area[:, :3] + projection_distances[:, None] * sol.light_vector
     )
 
     # 2) Convert x and y coordinates to grid indices with periodic boundary conditions
-    x_indices = np.mod(projected_points[:, 0].astype(int), width)
-    y_indices = np.mod(projected_points[:, 1].astype(int), height)
+    x_indices = np.mod(projected_points[:, 0].astype(int), env.leaf_area.width)
+    y_indices = np.mod(projected_points[:, 1].astype(int), env.leaf_area.height)
+    y_indices = env.leaf_area.height - y_indices - 1# Flip to y goes north->south
 
     # 3) Use np.add.at to accumulate projected leaf area values into the grid
+    leaf_area_surface_grid = np.zeros((env.leaf_area.height, env.leaf_area.width))
     np.add.at(
         leaf_area_surface_grid, (y_indices.astype(int), x_indices.astype(int)), env.leaf_area.leaf_area[:, 3]
     )
@@ -66,9 +64,13 @@ def _attenuate_surface_flat(env: Environment, sol: SolarPosition, extn: float) -
 
 # Light attenuation algorithm for irradiance on terrain surface
 def _attenuate_surface_terrain(env: Environment, sol: SolarPosition, extn: float) -> RelativeIrradiance:
+    # round_dec = 7
     # Create copy
     leaf_area = np.copy(env.leaf_area.leaf_area)
     terrain = np.copy(env.terrain.terrain)
+
+    # leaf_area = np.round(leaf_area, round_dec)
+    # terrain = np.round(terrain, round_dec)
 
     r = _get_rot_mat(sol.light_vector)
     inverse_r = np.linalg.inv(r)
@@ -102,25 +104,27 @@ def _attenuate_surface_terrain(env: Environment, sol: SolarPosition, extn: float
     terrain[:, 1] -= min_y
 
     # Add leaf area into cells
-    leaf_grid = np.zeros((max_x - min_x + 1, max_y - min_y + 1))
+    leaf_grid = np.zeros((max_y - min_y + 1, max_x - min_x + 1))
     np.add.at(
-        leaf_grid, (leaf_area[:, 0].astype(int), leaf_area[:, 1].astype(int)), leaf_area[:, 3]
+        leaf_grid, (leaf_area[:, 1].astype(int), leaf_area[:, 0].astype(int)), leaf_area[:, 3]
     )
     leaf_grid = np.exp(-extn * leaf_grid)
+    # leaf_grid = np.round(leaf_grid, round_dec)
 
     # x, y, z, irr (all 1s)
     terrain_stack = np.column_stack((terrain[:, 0], terrain[:, 1], terrain[:, 2], np.ones_like(terrain[:, 0].flatten())))
+    # terrain_stack[:, 2] = np.round(terrain_stack[:, 2], round_dec)
 
     # Find max terrain value for each cell
     terrain_max = np.zeros((max_x - min_x + 1, max_y - min_y + 1))
     np.maximum.at(
-        terrain_max, (terrain[:, 0].astype(int), terrain[:, 1].astype(int)), np.abs(terrain_stack[:, 2])
+        terrain_max, (terrain_stack[:, 0].astype(int), terrain_stack[:, 1].astype(int)), np.abs(terrain_stack[:, 2])
     )
 
     # Make irr 0 if value is not max (is in shadow)
-    epsilon = 1e-6
+    # epsilon = 1e-6
     terrain_stack[:, 3] = np.where(
-        np.abs(terrain_stack[:, 2]) >= terrain_max[terrain_stack[:, 0].astype(int), terrain_stack[:, 1].astype(int)]-epsilon,
+        np.abs(terrain_stack[:, 2]) >= terrain_max[terrain_stack[:, 0].astype(int), terrain_stack[:, 1].astype(int)], #-epsilon,
         1., 
         0.
     )
@@ -140,11 +144,11 @@ def _attenuate_surface_terrain(env: Environment, sol: SolarPosition, extn: float
     terrain_stack[:, 3] = irr_2d[terrain_stack[:, 0].astype(int), terrain_stack[:, 1].astype(int)] # Put irr values back in terrain stack
 
     # Multiply the irr stack (which is all 0s and 1s) by irradiance to get real values
-    terrain_stack[:, 3] = terrain_stack[:, 3] * leaf_grid[terrain[:, 0].astype(int), terrain[:, 1].astype(int)]
+    terrain_stack[:, 3] = terrain_stack[:, 3] * leaf_grid[terrain[:, 1].astype(int), terrain[:, 0].astype(int)]
 
     # Make 2D grid with terrain valuess
-    terrain_result_grid = np.zeros((env.terrain.width, env.terrain.height))
-    terrain_result_grid[env.terrain.terrain[:, 1].astype(int), env.terrain.terrain[:, 0].astype(int)] = terrain_stack[:, 3]
+    terrain_result_grid = np.zeros((env.terrain.height, env.terrain.width))
+    terrain_result_grid[(env.terrain.height - env.terrain.terrain[:, 1].astype(int) - 1), env.terrain.terrain[:, 0].astype(int)] = terrain_stack[:, 3]
 
     return RelativeIrradiance(terrain_result_grid)
 
@@ -169,8 +173,7 @@ def attenuate_surface(env: Environment, sol: SolarPosition, extn: float = 0.5) -
     Returns
     -------
     RelativeIrradiance
-        Class containing the resulting relative irradiance for the terrain surface and optionally 
-        the canopy if the canopy was attenuated.
+        Class containing the resulting relative irradiance for the terrain surface.
     """
     if env.terrain is None:
         return _attenuate_surface_flat(env, sol, extn)

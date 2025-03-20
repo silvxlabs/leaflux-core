@@ -149,15 +149,20 @@ class Environment:
         Environment
             Instance of Environment class.
         """
+        if not isinstance(leaf_area, LeafArea):
+            raise TypeError(f"Expected an object of type 'LeafArea', but got {type(leaf_area)}.")
+    
         # If there is no terrain provided, set terrain to None
         if terrain is None:
             self.leaf_area = leaf_area
             self.terrain = None
-        # Max leaf area indices must be less than max terrain indices. Ideally shapes should be the same
-        # but since the leaf area is a sparse array we must just check that it is smaller.
-        elif leaf_area.width == terrain.width and leaf_area.height == terrain.height:
-            self.leaf_area = leaf_area
-            self.terrain = terrain
         else:
-            raise ValueError(f"Leaf area grid dimensions must match terrain dimensions. Leaf area is ({leaf_area.width}, {leaf_area.height}) and terrain is ({terrain.width}, {terrain.height})")
+            if not isinstance(terrain, Terrain):
+                    raise TypeError(f"Expected an object of type 'Terrain', but got {type(terrain)}.")
+            # Leaf area dimensions must match terrain dimensions
+            if leaf_area.width == terrain.width and leaf_area.height == terrain.height:
+                self.leaf_area = leaf_area
+                self.terrain = terrain
+            else:
+                raise ValueError(f"Leaf area grid dimensions must match terrain dimensions. Leaf area is ({leaf_area.width}, {leaf_area.height}) and terrain is ({terrain.width}, {terrain.height})")
 

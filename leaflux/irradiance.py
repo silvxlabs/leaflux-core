@@ -8,7 +8,7 @@ class RelativeIrradiance:
 
     Attributes
     ----------
-    leaf_irradiance: np.ndarray
+    canopy_irradiance: np.ndarray
         Holds the coordinates and relative irradiance for the canopy. Is a numpy array
         with shape (N, 4) where each row is (x, y, z, irradiance), and y runs south 
         to north.
@@ -18,11 +18,11 @@ class RelativeIrradiance:
         value for that point on the terrain, and y runs north to south.
     
     """
-    leaf_irradiance: np.ndarray
+    canopy_irradiance: np.ndarray
     terrain_irradiance: np.ndarray
 
-    def __init__(self, terrain_irradiance: np.ndarray, leaf_irradiance: np.ndarray = None):
-        self.leaf_irradiance = leaf_irradiance
+    def __init__(self, terrain_irradiance: np.ndarray = None, canopy_irradiance: np.ndarray = None):
+        self.canopy_irradiance = canopy_irradiance
         self.terrain_irradiance = terrain_irradiance
 
 

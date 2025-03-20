@@ -8,9 +8,9 @@ class TestIrradiance:
         # Normal case
         ri1 = RelativeIrradiance(terrain_irr, leaf_irr)
         np.testing.assert_array_equal(ri1.terrain_irradiance, terrain_irr)
-        np.testing.assert_array_equal(ri1.leaf_irradiance, leaf_irr)
+        np.testing.assert_array_equal(ri1.canopy_irradiance, leaf_irr)
 
         # No leaf irradiance
         ri2 = RelativeIrradiance(terrain_irr)
         np.testing.assert_array_equal(ri2.terrain_irradiance, terrain_irr)
-        assert ri2.leaf_irradiance is None
+        assert ri2.canopy_irradiance is None

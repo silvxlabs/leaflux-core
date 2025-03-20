@@ -261,13 +261,16 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
         # Make dummy terrain area stack that will have projected leaf area on it
         dummy_terrain_area_stack = np.copy(terrain_area_stack)
         dummy_terrain_area_stack[:, 3] = 0.0 # No leaf area this time
+        dummy_terrain_area_stack[:, 7] += 1
 
-        terrain_area_stack[:, 7] -= 1
+        # terrain_area_stack[:, 7] -= 1
         leaf_terrain_dummy_stack = np.vstack((leaf_area_stack, terrain_area_stack, dummy_terrain_area_stack))
 
     # Floor x and y values to "bucket"
-    leaf_terrain_dummy_stack[:, 5] = np.trunc(leaf_terrain_dummy_stack[:, 5])
-    leaf_terrain_dummy_stack[:, 6] = np.trunc(leaf_terrain_dummy_stack[:, 6])
+    # leaf_terrain_dummy_stack[:, 5] = np.trunc(leaf_terrain_dummy_stack[:, 5])
+    # leaf_terrain_dummy_stack[:, 6] = np.trunc(leaf_terrain_dummy_stack[:, 6])
+    leaf_terrain_dummy_stack[:, 5], x_rem = np.divmod(leaf_terrain_dummy_stack[:, 5], 1)
+    leaf_terrain_dummy_stack[:, 6], y_rem = np.divmod(leaf_terrain_dummy_stack[:, 6], 1)
 
     # Sort by z in descending order
     leaf_terrain_dummy_stack = leaf_terrain_dummy_stack[leaf_terrain_dummy_stack[:, 7].argsort()[::-1]]
@@ -301,7 +304,7 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
 
         # Isolate canopy irradiance
         canopy_mask = (leaf_terrain_dummy_stack[:, 3] != 2000.0) & (leaf_terrain_dummy_stack[:, 3] != 0.0)
-        canopy_result_stack = np.column_stack((leaf_terrain_dummy_stack[canopy_mask, :3], leaf_terrain_dummy_stack[canopy_mask, 4]))
+        canopy_result_stack = np.column_stack((leaf_terrain_dummy_stack[canopy_mask, 0], leaf_terrain_dummy_stack[canopy_mask, 1], leaf_terrain_dummy_stack[canopy_mask, 2], leaf_terrain_dummy_stack[canopy_mask, 4]))
         canopy_result_stack = canopy_result_stack.astype(np.float32)
 
         return RelativeIrradiance(terrain_irradiance=surface_result_grid, canopy_irradiance=canopy_result_stack)

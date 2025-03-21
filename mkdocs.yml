@@ -9,6 +9,7 @@ nav:
   - Home: index.md
   - How To Guides: how-to-guides.md
   - Reference: reference.md
+  - Troubleshooting: troubleshooting.md
 
 plugins:
   - mkdocstrings

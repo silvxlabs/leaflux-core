@@ -192,6 +192,10 @@ def attenuate_surface(env: Environment, sol: SolarPosition, extn: float = 0.5) -
     absolute. If both LeafArea and Terrain are provided it is expected that sets of coordinates are
     either both absolute or both manipulated to be relative to 0.
 
+    *Note:* When run with both a LeafArea and Terrain, this function can have different results depending
+    on platform due to vectorized operations. While this algorithm is faster than `attenuate_all()`, 
+    use `attenuate_all()` if consistency is a priority for your use case.
+
     Parameters
     ----------
     env: Environment 
@@ -213,18 +217,17 @@ def attenuate_surface(env: Environment, sol: SolarPosition, extn: float = 0.5) -
         return _attenuate_surface_flat(env, sol, extn)
     else:
         return _attenuate_surface_terrain(env, sol, extn)
-    
+
 def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> RelativeIrradiance:
     """
     Produces a RelativeIrradiance object containing the relative irradiance for the canopy and
-    the surface, if the provided Environment contains a Terrain object. If both LeafArea and Terrain are provided it is 
-    expected that sets of coordinates are either both absolute or both manipulated to be relative to 0.
+    surface.
 
     Parameters
     -
     env: Environment
-        Environment object which may or may not contain a Terrain object. If no Terrain object is provided, only canopy
-        irradiance will be provided. 
+        Environment object which may or may not contain a Terrain object. If no Terrain object is provided, surface
+        irradiance is still returned, but on a flat plane that is created below the leaf area.
     
     sol: SolarPosition 
         SolarPosition object which describes the date, time, and latitude. 
@@ -235,7 +238,8 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
     Returns
     -
     RelativeIrradiance
-        Class containing the resulting relative irradiance for the canopy and surface if a Terrain was provided.
+        Class containing the resulting relative irradiance for the terrain surface and 
+        canopy.
     """
     r = _get_rot_mat(sol.light_vector)
 
@@ -243,15 +247,9 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
     leaf_area_stack = np.column_stack((env.leaf_area.leaf_area[:, 0], env.leaf_area.leaf_area[:, 1], env.leaf_area.leaf_area[:, 2], env.leaf_area.leaf_area[:, 3], np.zeros_like(env.leaf_area.leaf_area[:, 0])))
     leaf_area_stack_rot = (r @ leaf_area_stack[:, :3].T).T
     leaf_area_stack = np.column_stack((leaf_area_stack, leaf_area_stack_rot))
-    leaf_area_stack = leaf_area_stack.astype(np.float32)
 
-    # NO TERRAIN PROVIDED
-    if env.terrain == None:
-        leaf_terrain_dummy_stack = leaf_area_stack
-
-    # TERRAIN PROVIDED
-    else:
-        # Make terrain area array that will hold giant leaf area values
+    # Make terrain area array that will hold giant leaf area values
+    if env.terrain != None:
         terrain_leaf_area = np.full_like(env.terrain.terrain[:, 0].flatten(), 2000.0, dtype=np.float32) # Make leaf area very high
         terrain_area_stack = np.column_stack((env.terrain.terrain[:, 0].flatten(), env.terrain.terrain[:, 1].flatten(), env.terrain.terrain[:, 2].flatten(), terrain_leaf_area, np.ones_like(env.terrain.terrain[:, 0].flatten(), dtype=np.float32)))
         terrain_area_rot_stack = (r @ terrain_area_stack[:, :3].T).T
@@ -261,14 +259,14 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
         # Make dummy terrain area stack that will have projected leaf area on it
         dummy_terrain_area_stack = np.copy(terrain_area_stack)
         dummy_terrain_area_stack[:, 3] = 0.0 # No leaf area this time
-        dummy_terrain_area_stack[:, 7] += 1
 
-        # terrain_area_stack[:, 7] -= 1
+        terrain_area_stack[:, 7] -= 1
         leaf_terrain_dummy_stack = np.vstack((leaf_area_stack, terrain_area_stack, dummy_terrain_area_stack))
+    else:
+        # No terrain provided
+        leaf_terrain_dummy_stack = leaf_area_stack
 
     # Floor x and y values to "bucket"
-    # leaf_terrain_dummy_stack[:, 5] = np.trunc(leaf_terrain_dummy_stack[:, 5])
-    # leaf_terrain_dummy_stack[:, 6] = np.trunc(leaf_terrain_dummy_stack[:, 6])
     leaf_terrain_dummy_stack[:, 5], x_rem = np.divmod(leaf_terrain_dummy_stack[:, 5], 1)
     leaf_terrain_dummy_stack[:, 6], y_rem = np.divmod(leaf_terrain_dummy_stack[:, 6], 1)
 
@@ -282,24 +280,20 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
     x_min = np.min(leaf_terrain_dummy_stack[:, 5]).astype(int)
     y_min = np.min(leaf_terrain_dummy_stack[:, 6]).astype(int)
 
-    # Do plane sweep
     leaf_terrain_dummy_stack[:, 4] = plane_sweep(leaf_terrain_dummy_stack, x_min, x_max, y_min, y_max)
 
     # Irradiance
     leaf_terrain_dummy_stack[:, 4] = np.exp(-extn * leaf_terrain_dummy_stack[:, 4])
 
-    # NO TERRAIN PROVIDED
     if env.terrain == None:
         canopy_result_stack = np.column_stack((leaf_terrain_dummy_stack[:, :3], leaf_terrain_dummy_stack[:, 4]))
         return RelativeIrradiance(canopy_irradiance=canopy_result_stack)
-    
-    # TERRAIN PROVIDED
+
     else:
-        # Return original coords
         # Isolate terrain surface irradiance
         surface_mask = leaf_terrain_dummy_stack[:, 3] == 0.0
         surface = leaf_terrain_dummy_stack[surface_mask, :]
-        surface_result_grid = np.empty((env.leaf_area.height, env.leaf_area.width), dtype=np.float32)
+        surface_result_grid = np.zeros((env.leaf_area.height, env.leaf_area.width), dtype=np.float32)
         surface_result_grid[(env.leaf_area.height - np.round(surface[:, 1]) - 1).astype(int), np.round(surface[:, 0]).astype(int)] = surface[:, 4]
 
         # Isolate canopy irradiance
@@ -307,4 +301,4 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
         canopy_result_stack = np.column_stack((leaf_terrain_dummy_stack[canopy_mask, 0], leaf_terrain_dummy_stack[canopy_mask, 1], leaf_terrain_dummy_stack[canopy_mask, 2], leaf_terrain_dummy_stack[canopy_mask, 4]))
         canopy_result_stack = canopy_result_stack.astype(np.float32)
 
-        return RelativeIrradiance(terrain_irradiance=surface_result_grid, canopy_irradiance=canopy_result_stack)
+        return RelativeIrradiance(surface_result_grid, canopy_result_stack)

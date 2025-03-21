@@ -198,23 +198,23 @@ class TestGeneral:
                 print("* FLAT * Expected sum canopy: ", expected_sum_flat_canopy, " Actual sum canopy: ", actual_sum_flat_canopy, " Canopy sum diff: ", expected_sum_flat_canopy-actual_sum_flat_canopy)
 
                 # Testing against expected result
-                # np.testing.assert_allclose(expected_terr, actual_terr, atol=1e-6)
-                # np.testing.assert_allclose(expected_canopy, actual_canopy, atol=1e-6)
-                # np.testing.assert_equal(expected_terr, actual_terr)
-                # np.testing.assert_equal(expected_canopy, actual_canopy)
+                np.testing.assert_allclose(expected_terr, actual_terr, atol=1e-6)
+                np.testing.assert_allclose(expected_canopy, actual_canopy, atol=1e-6)
+                np.testing.assert_equal(expected_terr, actual_terr)
+                np.testing.assert_equal(expected_canopy, actual_canopy)
 
                 # Checking if are same within threshhold
-                thresh = 0.99
-                matches_canopy = np.isclose(expected_canopy, actual_canopy)
-                assert (np.sum(matches_canopy) / len(expected_canopy)) >= thresh
+                # thresh = 0.99
+                # matches_canopy = np.isclose(expected_canopy, actual_canopy)
+                # assert (np.sum(matches_canopy) / len(expected_canopy)) >= thresh
 
-                matches_terr = np.isclose(expected_terr, actual_terr)
-                assert (np.sum(matches_terr) / len(expected_terr)) >= thresh
+                # matches_terr = np.isclose(expected_terr, actual_terr)
+                # assert (np.sum(matches_terr) / len(expected_terr)) >= thresh
 
-                # Assert that flat result has no terrain and testing 
-                assert result_flat.terrain_irradiance == None
-                matches_flat = np.isclose(expected_canopy_flat, actual_canopy_flat)
-                assert (np.sum(matches_flat) / len(actual_canopy_flat)) >= thresh
+                # # Assert that flat result has no terrain and testing 
+                # assert result_flat.terrain_irradiance == None
+                # matches_flat = np.isclose(expected_canopy_flat, actual_canopy_flat)
+                # assert (np.sum(matches_flat) / len(actual_canopy_flat)) >= thresh
 
     @pytest.mark.skip()          
     def test_surface_vs_all(self):

@@ -130,91 +130,102 @@ class TestGeneral:
         assert surface2.terrain_irradiance is not None
 
     def test_attenuate_all(self):
-            my_datetime = datetime(2024, 6, 15, 18, 00)
-            my_latitude = 40.
-            my_solar_position = SolarPosition(my_datetime, my_latitude)
+        my_datetime = datetime(2024, 6, 15, 18, 00)
+        my_latitude = 40.
+        my_solar_position = SolarPosition(my_datetime, my_latitude)
 
-            my_terrain_grid = np.load("test/data/terrain_input300.npy")
-            my_terrain = Terrain(my_terrain_grid)
+        my_terrain_grid = np.load("test/data/terrain_input300.npy")
+        my_terrain = Terrain(my_terrain_grid)
 
-            leaf_area_grid = np.load("test/data/leaf_area_grid.npy")
-            my_leaf_area = LeafArea.from_uniformgrid(leaf_area_grid)
-            my_leaf_area.leaf_area[:, 2] = my_leaf_area.leaf_area[:, 2] + my_terrain_grid[(my_leaf_area.height - my_leaf_area.leaf_area[:, 1] - 1).astype(int), my_leaf_area.leaf_area[:, 0].astype(int)]
+        leaf_area_grid = np.load("test/data/leaf_area_grid.npy")
+        my_leaf_area = LeafArea.from_uniformgrid(leaf_area_grid)
+        my_leaf_area.leaf_area[:, 2] = my_leaf_area.leaf_area[:, 2] + my_terrain_grid[(my_leaf_area.height - my_leaf_area.leaf_area[:, 1] - 1).astype(int), my_leaf_area.leaf_area[:, 0].astype(int)]
 
-            my_env = Environment(my_leaf_area, my_terrain)
-            my_flat_env = Environment(my_leaf_area)
+        my_sensor_0 = Sensor(150., 150., 50.)
+        my_sensor_1 = Sensor(33., 33., 3.)
+        my_sensor_2 = Sensor(77., 77., 7.7)
+        sensor_list = list[Sensor]
+        sensor_list = [my_sensor_0, my_sensor_1, my_sensor_2]
 
-            result = attenuate_all(my_env, my_solar_position)
-            result_flat = attenuate_all(my_flat_env, my_solar_position)
+        my_env = Environment(my_leaf_area, terrain=my_terrain, sensors=sensor_list)
+        my_flat_env = Environment(my_leaf_area)
 
-            SAVE_NEW = False
-            if SAVE_NEW:
-                np.save("test/data/all_result_terr_1.npy", result.terrain_irradiance)
-                np.save("test/data/all_result_canopy_1.npy", result.canopy_irradiance)
+        result = attenuate_all(my_env, my_solar_position)
+        result_flat = attenuate_all(my_flat_env, my_solar_position)
 
-                np.save("test/data/all_result_canopy_flat.npy", result_flat.canopy_irradiance)
-                # plot_entire(result.terrain_irradiance, my_terrain.terrain, result.canopy_irradiance, my_solar_position, True)
+        SAVE_NEW = False
+        if SAVE_NEW:
+            np.save("test/data/all_result_terr_1.npy", result.terrain_irradiance)
+            np.save("test/data/all_result_canopy_1.npy", result.canopy_irradiance)
 
-            ASSERT = True
-            if ASSERT:
-                # With terrain
-                expected_terr = np.load("test/data/all_result_terr_1.npy")
-                expected_canopy = np.load("test/data/all_result_canopy_1.npy")
+            np.save("test/data/all_result_canopy_flat.npy", result_flat.canopy_irradiance)
+            # plot_entire(result.terrain_irradiance, my_terrain.terrain, result.canopy_irradiance, my_solar_position, True)
 
-                actual_terr = result.terrain_irradiance
-                actual_canopy = result.canopy_irradiance
+        ASSERT = True
+        if ASSERT:
+            # With terrain
+            expected_terr = np.load("test/data/all_result_terr_1.npy")
+            expected_canopy = np.load("test/data/all_result_canopy_1.npy")
 
-                errors_terr = np.abs(expected_terr - actual_terr)
-                errors_canopy = np.abs(expected_canopy - actual_canopy)
+            actual_terr = result.terrain_irradiance
+            actual_canopy = result.canopy_irradiance
 
-                error_indices_terr = np.where(errors_terr > 0)[0]
-                error_indices_canopy = np.where(errors_canopy > 0)[0]
+            errors_terr = np.abs(expected_terr - actual_terr)
+            errors_canopy = np.abs(expected_canopy - actual_canopy)
 
-                errors_above_1_terr = np.sum(errors_terr >= 1.0)
-                errors_above_1_canopy = np.sum(errors_canopy >= 1.0)
+            error_indices_terr = np.where(errors_terr > 0)[0]
+            error_indices_canopy = np.where(errors_canopy > 0)[0]
 
-                print("Terrain errors: ", len(error_indices_terr))
-                print("Caanopy errors: ", len(error_indices_canopy))
-                print("Total errors: ", len(error_indices_terr)+len(error_indices_canopy))
-                print("Terrain errors over 1: ", errors_above_1_terr)
-                print("Canopy errors over 1: ", errors_above_1_canopy)
-                print("Number of errors with difference >= 1.0:", errors_above_1_terr + errors_above_1_canopy)
+            errors_above_1_terr = np.sum(errors_terr >= 1.0)
+            errors_above_1_canopy = np.sum(errors_canopy >= 1.0)
 
-                expected_sum_terr = np.sum(expected_terr)
-                expected_sum_canopy = np.sum(expected_canopy[:, 3])
-                actual_sum_terr = np.sum(actual_terr)
-                actual_sum_canopy = np.sum(actual_canopy[:, 3])
+            print("Terrain errors: ", len(error_indices_terr))
+            print("Caanopy errors: ", len(error_indices_canopy))
+            print("Total errors: ", len(error_indices_terr)+len(error_indices_canopy))
+            print("Terrain errors over 1: ", errors_above_1_terr)
+            print("Canopy errors over 1: ", errors_above_1_canopy)
+            print("Number of errors with difference >= 1.0:", errors_above_1_terr + errors_above_1_canopy)
 
-                print("Expected sum terr: ", expected_sum_terr, " Actual sum terr: ", actual_sum_terr, "Terr sum diff: ", expected_sum_terr-actual_sum_terr)
-                print("Expected sum canopy: ", expected_sum_canopy, " Actual sum canopy: ", actual_sum_canopy, " Canopy sum diff: ", expected_sum_canopy-actual_sum_canopy)
-                print("Total expected sum: ", expected_sum_terr + expected_sum_canopy)
-                print("Total actual sum: ", actual_sum_terr + actual_sum_canopy)
+            expected_sum_terr = np.sum(expected_terr)
+            expected_sum_canopy = np.sum(expected_canopy[:, 3])
+            actual_sum_terr = np.sum(actual_terr)
+            actual_sum_canopy = np.sum(actual_canopy[:, 3])
 
-                # No terrain
-                expected_canopy_flat = np.load("test/data/all_result_canopy_flat.npy")
-                actual_canopy_flat = result_flat.canopy_irradiance
-                expected_sum_flat_canopy = np.sum(expected_canopy_flat)
-                actual_sum_flat_canopy = np.sum(actual_canopy_flat)
-                print("* FLAT * Expected sum canopy: ", expected_sum_flat_canopy, " Actual sum canopy: ", actual_sum_flat_canopy, " Canopy sum diff: ", expected_sum_flat_canopy-actual_sum_flat_canopy)
+            print("Expected sum terr: ", expected_sum_terr, " Actual sum terr: ", actual_sum_terr, "Terr sum diff: ", expected_sum_terr-actual_sum_terr)
+            print("Expected sum canopy: ", expected_sum_canopy, " Actual sum canopy: ", actual_sum_canopy, " Canopy sum diff: ", expected_sum_canopy-actual_sum_canopy)
+            print("Total expected sum: ", expected_sum_terr + expected_sum_canopy)
+            print("Total actual sum: ", actual_sum_terr + actual_sum_canopy)
 
-                # Testing against expected result
-                np.testing.assert_allclose(expected_terr, actual_terr, atol=1e-6)
-                np.testing.assert_allclose(expected_canopy, actual_canopy, atol=1e-6)
-                np.testing.assert_equal(expected_terr, actual_terr)
-                np.testing.assert_equal(expected_canopy, actual_canopy)
+            # No terrain
+            expected_canopy_flat = np.load("test/data/all_result_canopy_flat.npy")
+            actual_canopy_flat = result_flat.canopy_irradiance
+            expected_sum_flat_canopy = np.sum(expected_canopy_flat)
+            actual_sum_flat_canopy = np.sum(actual_canopy_flat)
+            print("* FLAT * Expected sum canopy: ", expected_sum_flat_canopy, " Actual sum canopy: ", actual_sum_flat_canopy, " Canopy sum diff: ", expected_sum_flat_canopy-actual_sum_flat_canopy)
 
-                # Checking if are same within threshhold
-                # thresh = 0.99
-                # matches_canopy = np.isclose(expected_canopy, actual_canopy)
-                # assert (np.sum(matches_canopy) / len(expected_canopy)) >= thresh
+            # Testing against expected result
+            np.testing.assert_allclose(expected_terr, actual_terr, atol=1e-6)
+            np.testing.assert_allclose(expected_canopy, actual_canopy, atol=1e-6)
+            np.testing.assert_equal(expected_terr, actual_terr)
+            np.testing.assert_equal(expected_canopy, actual_canopy)
 
-                # matches_terr = np.isclose(expected_terr, actual_terr)
-                # assert (np.sum(matches_terr) / len(expected_terr)) >= thresh
+            # Checking if are same within threshhold
+            # thresh = 0.99
+            # matches_canopy = np.isclose(expected_canopy, actual_canopy)
+            # assert (np.sum(matches_canopy) / len(expected_canopy)) >= thresh
 
-                # # Assert that flat result has no terrain and testing 
-                # assert result_flat.terrain_irradiance == None
-                # matches_flat = np.isclose(expected_canopy_flat, actual_canopy_flat)
-                # assert (np.sum(matches_flat) / len(actual_canopy_flat)) >= thresh
+            # matches_terr = np.isclose(expected_terr, actual_terr)
+            # assert (np.sum(matches_terr) / len(expected_terr)) >= thresh
+
+            # # Assert that flat result has no terrain and testing 
+            # assert result_flat.terrain_irradiance == None
+            # matches_flat = np.isclose(expected_canopy_flat, actual_canopy_flat)
+            # assert (np.sum(matches_flat) / len(actual_canopy_flat)) >= thresh
+
+            # Testing that sensor output coordinates remain the same and that results are consistent
+            assert result.sensor_irradiance[0, 0] == 150.
+            assert result.sensor_irradiance[2, 2] == 7.7
+            assert result.get_sensor_irradiance(my_sensor_1) == 1.
 
     @pytest.mark.skip()          
     def test_surface_vs_all(self):

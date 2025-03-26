@@ -4,3 +4,4 @@ pvlib
 scipy
 sparse
 numba
+pyvista

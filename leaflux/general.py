@@ -6,6 +6,7 @@ from .solar import *
 from .irradiance import *
 
 from numba import jit
+import pyvista as pv
 
 # Function to do hash map plane sweep
 @jit
@@ -195,6 +196,9 @@ def attenuate_surface(env: Environment, sol: SolarPosition, extn: float = 0.5) -
     *Note:* When run with both a LeafArea and Terrain, this function can have different results depending
     on platform due to vectorized operations. While this algorithm is faster than `attenuate_all()`, 
     use `attenuate_all()` if consistency is a priority for your use case.
+    
+    *Note:* While having sensors in the provided `Environment` will not cause any errors, the output
+    will not contain any results for sensors, as results for sensors can only be obtained using `attenuate_all()`.
 
     Parameters
     ----------
@@ -220,8 +224,8 @@ def attenuate_surface(env: Environment, sol: SolarPosition, extn: float = 0.5) -
 
 def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> RelativeIrradiance:
     """
-    Produces a RelativeIrradiance object containing the relative irradiance for the canopy and
-    surface.
+    Produces a RelativeIrradiance object containing the relative irradiance for the canopy, and, if appropriate information 
+    was provided, the terrain and sensors.
 
     Parameters
     -
@@ -238,8 +242,7 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
     Returns
     -
     RelativeIrradiance
-        Class containing the resulting relative irradiance for the terrain surface and 
-        canopy.
+        Class containing the resulting relative irradiance for the canopy, the terrain (if provided), and the sensors (if provided).
     """
     r = _get_rot_mat(sol.light_vector)
 
@@ -265,6 +268,16 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
     else:
         # No terrain provided
         leaf_terrain_dummy_stack = leaf_area_stack
+    
+    if env.sensors is not None:
+        for sensor in env.sensors:
+            # Rotate and create row
+            sensor_rot = (r @ np.array([sensor.position[0], sensor.position[1], sensor.position[2]]).reshape((1, 3)).T).T
+            # (x, y, z, leaf_area = 0.0, cum_leaf_area = 0.0, x_rot, y_rot, z_rot)
+            sensor_row = np.column_stack((sensor.position[0], sensor.position[1], sensor.position[2], 0.0, 0.0, sensor_rot))
+
+            # Add to leaf terrain dummy stack
+            leaf_terrain_dummy_stack = np.vstack((leaf_terrain_dummy_stack, sensor_row))
 
     # Floor x and y values to "bucket"
     leaf_terrain_dummy_stack[:, 5], x_rem = np.divmod(leaf_terrain_dummy_stack[:, 5], 1)
@@ -285,9 +298,20 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
     # Irradiance
     leaf_terrain_dummy_stack[:, 4] = np.exp(-extn * leaf_terrain_dummy_stack[:, 4])
 
+    sensor_irr = np.empty((0, 4), dtype=np.float32)
+    if(env.sensors != None):
+        for sensor in env.sensors:
+            # Extract point, add to list
+            sensor_mask = (leaf_terrain_dummy_stack[:, 0] == sensor.position[0]) & (leaf_terrain_dummy_stack[:, 1] == sensor.position[1]) & (leaf_terrain_dummy_stack[:, 2] == sensor.position[2])
+            sensor_row = np.column_stack((leaf_terrain_dummy_stack[sensor_mask, 0], leaf_terrain_dummy_stack[sensor_mask, 1], leaf_terrain_dummy_stack[sensor_mask, 2], leaf_terrain_dummy_stack[sensor_mask, 4]))
+            sensor_irr = np.vstack((sensor_irr, sensor_row))
+
+            # Remove from leaf_terrain_dummy_stack
+            leaf_terrain_dummy_stack = leaf_terrain_dummy_stack[~sensor_mask]
+
     if env.terrain == None:
         canopy_result_stack = np.column_stack((leaf_terrain_dummy_stack[:, :3], leaf_terrain_dummy_stack[:, 4]))
-        return RelativeIrradiance(canopy_irradiance=canopy_result_stack)
+        relative_irradiance = RelativeIrradiance(canopy_irradiance=canopy_result_stack)
 
     else:
         # Isolate terrain surface irradiance
@@ -301,4 +325,92 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
         canopy_result_stack = np.column_stack((leaf_terrain_dummy_stack[canopy_mask, 0], leaf_terrain_dummy_stack[canopy_mask, 1], leaf_terrain_dummy_stack[canopy_mask, 2], leaf_terrain_dummy_stack[canopy_mask, 4]))
         canopy_result_stack = canopy_result_stack.astype(np.float32)
 
-        return RelativeIrradiance(surface_result_grid, canopy_result_stack)
+        relative_irradiance = RelativeIrradiance(surface_result_grid, canopy_result_stack)
+    if(env.sensors != None):
+        relative_irradiance.sensor_irradiance = sensor_irr
+    
+    return relative_irradiance
+
+def plot_irradiance(relative_irradiance: RelativeIrradiance, terrain_coords: Terrain = None, solar_position: SolarPosition = None, show_sensors = False, show_axes: bool = False):
+    """
+    Uses pyvista to plot the irradiance for the canopy and terrain (if available), optionally showing the solar direction vector, sensors (if available), and axes. The optional 
+    parameters can be helpful for debugging.
+
+    Parameters
+    -
+    relative_irradiance: RelativeIrradiance
+        Object of type RelativeIrradiance that has been returned from `attenuate_all` or `attenuate_surface`
+    terrain_coords: Terrain
+        (optional) Object of type Terrain. This is used to plot the z values of the terrain. Default is None but is *required* if you 
+        provided a `RelativeIrradiance` with terrain.
+    solar_position: SolarPosition
+        (optional) Object of type SolarPosition. Provide this if you would like an arrow in the direction of the solar vector to be drawn. Default is None.
+    show_sensors: bool
+        (optional) Bool indicating whether sensors, if they exist, will be shown. Default is False.
+    show_axes: bool
+        (optional) Bool indicating whether axes should be drawn. Default is False.
+
+    """
+    plotter = pv.Plotter()
+
+    # If there is only canopy to plot
+    all_irr = relative_irradiance.canopy_irradiance
+
+    # If there is terrain, plot this too
+    if relative_irradiance.terrain_irradiance is not None:
+        if not isinstance(terrain_coords, Terrain):
+            raise TypeError(f"Expected an object of type 'Terrain', but got {type(terrain)}. Please supply terrain coordinates.")
+        terrain_stack = Terrain(relative_irradiance.terrain_irradiance)
+        # x, y, z, irr
+        terrain = np.column_stack((terrain_stack.terrain[:, 0].ravel(), terrain_stack.terrain[:, 1].ravel(), terrain_coords.terrain[:, 2].ravel(), terrain_stack.terrain[:, 2].ravel()))
+
+        # Adding canopy and terrain
+        if relative_irradiance.canopy_irradiance is not None:
+            all_irr = np.vstack((terrain, relative_irradiance.canopy_irradiance))
+        # Unless there is only terrain
+        else:
+            all_irr = terrain
+    
+    coords = all_irr[:, :3]
+    irr = all_irr[:, 3]
+
+    irr_point_cloud = pv.PolyData(coords)
+    irr_point_cloud["Relative Irradiance"] = irr
+
+    plotter.add_mesh(
+        irr_point_cloud,
+        scalars="Relative Irradiance",
+        cmap="viridis",            
+        point_size=6,
+        render_points_as_spheres=True,
+        show_edges=False
+    )
+
+    # Adding sensors in red
+    if relative_irradiance.sensor_irradiance is not None and show_sensors:
+        sensor_coords = relative_irradiance.sensor_irradiance[:, :3]
+        sensor_point_cloud = pv.PolyData(sensor_coords)
+
+        plotter.add_mesh(
+            sensor_point_cloud,
+            color="red",
+            point_size=20,
+            render_points_as_spheres=True,
+            show_edges=False
+        )
+
+    # Adding solar direction arrow in red
+    # In (x, y, z)
+    if solar_position is not None:
+        x_med = np.min(all_irr[:, 0]) + ((np.max(all_irr[:, 0]) - np.min(all_irr[:, 0])) / 2.)
+        y_med = np.min(all_irr[:, 1]) + ((np.max(all_irr[:, 1]) - np.min(all_irr[:, 1])) / 2.)
+        z_range = np.max(all_irr[:, 2]) - np.min(all_irr[:, 2])
+        arrow = pv.Arrow(start=(x_med, y_med, np.max(all_irr[:, 2]) + z_range), direction=solar_position.light_vector, scale=100)
+        plotter.add_mesh(arrow, color="red")
+
+    # Adding axes
+    if show_axes:
+        plotter.show_axes()
+
+    # Showing plot
+    plotter.show()

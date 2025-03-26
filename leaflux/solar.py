@@ -22,7 +22,7 @@ class SolarPosition:
     """
     timestamp: datetime
     latitude: float
-    light_vector: np.array #list[float]
+    light_vector: np.array
 
     def __init__(self, datetime: datetime, latitude: float):
         """

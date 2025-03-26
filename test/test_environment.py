@@ -30,6 +30,39 @@ class TestTerrain:
         assert output.width == 300
         assert output.height == 300
 
+class TestSensor:
+    def test_init(self):
+        my_sensor_0 = Sensor(1.5, 1.6, 1.7)
+
+        assert my_sensor_0.position[0] == 1.5
+        assert my_sensor_0.position[1] == 1.6
+        assert my_sensor_0.position[2] == 1.7
+
+        assert len(my_sensor_0.position) == 3
+
+        dummy_leaf_area_grid = np.ones((100, 100, 100), dtype=np.float32)
+        dummy_leaf_area = LeafArea.from_uniformgrid(dummy_leaf_area_grid)
+
+        sensor_list = list[Sensor]
+        sensor_list = [my_sensor_0]
+        my_env_0 = Environment(dummy_leaf_area, sensors=sensor_list)
+
+        assert my_env_0.sensors[0] == my_sensor_0
+
+        my_sensor_1 = Sensor(2.1, 2.2, 2.3)
+        my_sensor_2 = Sensor(3.1, 3.2, 3.3)
+        sensor_list.append(my_sensor_1)
+        sensor_list.append(my_sensor_2)
+
+        my_env_1 = Environment(dummy_leaf_area, sensors=sensor_list)
+
+        assert my_env_1.sensors is not None
+        assert my_env_1.sensors[0] == my_sensor_0
+        assert my_env_1.sensors[1].position[0] == 2.1
+        assert my_env_1.sensors[2].position[2] == 3.3
+
+        assert len(my_env_1.sensors) == 3
+
 class TestEnvironment:
     def test_init(self):
         leaf_area_grid = np.load("test/data/leaf_area_grid.npy")
@@ -55,3 +88,18 @@ class TestEnvironment:
         # Case where ValueError is raised, check that is raised
         with pytest.raises(ValueError):
             Environment(leaf_area300, terrain600)
+
+        # Testing with Sensor class
+        my_sensor_0 = Sensor(1.5, 1.6, 1.7)
+        my_sensor_1 = Sensor(2.1, 2.2, 2.3)
+        my_sensor_2 = Sensor(3.1, 3.2, 3.3)
+        sensor_list = list[Sensor]
+        sensor_list = [my_sensor_0, my_sensor_1, my_sensor_2]
+
+        with_sensor_env = Environment(leaf_area300, sensors=sensor_list)
+        assert with_sensor_env.sensors is not None
+        assert with_sensor_env.terrain is None
+
+        with_sensor_terrain_env = Environment(leaf_area300, sensors=sensor_list, terrain=terrain300)
+        assert isinstance(with_sensor_terrain_env.terrain, Terrain)
+        assert isinstance(with_sensor_terrain_env.sensors[0], Sensor)

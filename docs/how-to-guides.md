@@ -4,7 +4,7 @@
 To load from an existing sparse numpy ND Array with shape (N, 4), you can 
 use the default constructor. You must also provide the width and height of the
 area the leaf area is describing. This should be the same width and height as the
-Terrain if you are providing one.
+`Terrain` if you are providing one. y coordinates are expected to run south to north.
 
     
 ```
@@ -13,7 +13,7 @@ my_leaf_area = LeafArea(np.load("path/to/my/leafarea.npy"), my_leaf_area_width, 
     
 
 If you are loading from a dense uniform grid, load using the `from_uniformgrid` constructor. This grid 
-is expected to have shape (y, x, z) where each coordinate maps to a leaf area value. y is expected to run 
+is expected to have shape (y, x, z) where each coordinate maps to a leaf area value. y coordinates are expected to run 
 north to south. Width and height are inferred from grid shape.
 
     
@@ -24,27 +24,46 @@ my_leaf_area = LeafArea.from_uniform_grid(np.load("path/to/my/uniformgrid.npy"))
 **Load a terrain grid (optional)**
 
 The default constructor will load from a 2.5D uniform grid where the value
-at (x, y) is z.
+at (y, x) is z. y coordinates are expected to run north to south.
 
 ```
 my_terrain = Terrain(np.load("path/to/my/terrain.npy"))
 ```
 
-**Create environment**
+**Add sensors (optional)**
 
-Create the environment with the leaf area and terrain objects you have made. You can also create an environment without a terrain object.
+You can create and add sensors to your environment to generate irradiance results at specific points, which can be useful 
+for testing and validation.
 
-The Terrain and LeafArea objects that make up your Environment should have z values relative to eachother-- in the surface algorithms z values are 
-manipulated to be in relation to 0, but provided values can be absolute. Ensure this is the case before creating your Environment. Plotting your 
-LeafArea and Terrain can be helpful, as can checking minimum z values.
+(x, y, z) coordinates for sensors are expected to have y coordinates running south to north. 
+
+Sensors must be provided as a list of sensors. Create a list of sensors like this:
 
 ```
-my_environment = Envronment(my_leaf_area, my_terrain)
+my_sensor_0 = Sensor(300., 150., 20.)
+my_sensor_1 = Sensor(200., 100., 15.)
+my_sensor_2 = Sensor(333., 333., 33.)
+my_sensors = list[Sensor]
+my_sensors = [my_sensor_0, my_sensor_1, my_sensor_2]
+```
+
+You must ensure that the coordinates of your sensors are located within the domain of your environment.
+
+**Create environment**
+
+Create the environment with the `LeafArea` and `Terrain` objects you have made. You can also create an environment without a `Terrain` object.
+
+The `Terrain` and `LeafArea` objects that make up your `Environment` should have z values relative to eachother-- in the surface algorithms z values are 
+manipulated to be in relation to 0, but provided values can be absolute. Ensure this is the case before creating your `Environment`. Plotting your 
+`LeafArea` and `Terrain` can be helpful, as can checking minimum z values.
+
+```
+my_environment = Envronment(my_leaf_area, terrain=my_terrain, sensors=my_sensors)
 ```
 
 **Create solar position with date, time, and latitude**
 
-The model needs a solar position, which can be created with a date, time, and latitude. The datetime required by the SolarPosition constructor is a Python `datetime` object, see <https://docs.python.org/3/library/datetime.html#datetime-objects> for more detail about `datetime` objects.
+The model needs a solar position, which can be created with a date, time, and latitude. The datetime required by the `SolarPosition` constructor is a Python `datetime` object, see <https://docs.python.org/3/library/datetime.html#datetime-objects> for more detail about `datetime` objects.
 
 ```
 # datetime parameters are year, month, day, hour, minute
@@ -70,5 +89,43 @@ provided, results for the canopy and surface are returned.
 my_result = attenuate_all(my_environment, my_solar_position)
 my_terrain_irradiance = my_result.terrain_irradiance
 my_canopy_irradiance = my_result.canopy_irradiance
+```
+
+Sensor results can be obtained with the `get_sensor_irradiance()` function. Sensor results are only generated from `attenuate_all()`.
+
+```
+sensor_0_irradiance = my_result.get_sensor_irradiance(my_sensor_0)
+```
+
+Sensor results can also be accessed directly via the `sensor_irradiance` attribute of the `RelativeIrradiance` class. `sensor_irradiance` is an 
+(N, 4) numpy array where each row is (x, y, z, irradiance), and where the (x, y, z) coordinates match those of the sensor in the list of sensors
+provided to the `Environment` used to get the result. For example, given the sensor example above, the sensor irradiance of `my_sensor_0` could
+also be obtained like this
+
+```
+sensor_0_irradiance = my_result.sensor_irradiance[0, 4] # Irradiance
+sensor_0_coordinates = my_result.sensor_irradiance[0, :3] # Coordinates
+sensor_0_result = my_result.sensor_irradiance[0, :] # Entire row
+```
+
+## How to plot LeafLux results
+
+The `plot_irradiance()` function has been included to make plotting the output of LeafLux easy and flexible. 
+
+`plot_irradiance()` just needs the result of either `attenuate_surface()` or `attenuate_all()`, but there are additional options as well. Terrain 
+coordinates *must* be provided if the result contains terrain irradiance.
+
+If a `SolarPosition` is provided, an arrow will be drawn in the direction of the solar vector. This can be useful for visualizing how the sun is 
+interacting with your environment. 
+
+If sensors are present in the result and `show_sensors` is set to `True`, sensors will be drawn as large red spheres, which can be useful for 
+checking that their coordinates are correct.
+
+If `show_axes` is set to `True`, axes will be drawn, which can be helpful in understanding the output. 
+
+The below example plots the entire environment and includes all the optional elements.
+
+```
+plot_irradiance(my_result, my_terrain, my_solar_position, True, True)
 ```
 

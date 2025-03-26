@@ -119,6 +119,39 @@ class Terrain:
         terr_y = self.height - terr_y - 1 # Flipping to be south->north
         self.terrain = np.column_stack((terr_x.ravel(), terr_y.ravel(), terrain.flatten())) # Rows of (x, y, z)
 
+class Sensor:
+    """
+    Class that holds information about sensors in the environment. 
+
+    Attributes
+    -
+    position: list[float]
+        Holds the (x, y, z) coordinates of the sensor. Y coordinates run south to north.
+
+    """
+    position: list[float]
+
+    def __init__(self, x: float, y: float, z: float):
+        """
+        Constructor for Sensor object.
+
+        Parameters
+        -
+        x: float
+            x coordinate of sensor. 
+
+        y: float
+            y coordinate of sensor. Y coordinates are expected to run south to north.
+
+        z: float
+            z coordinate of sensor.
+
+        Returns
+        -
+        Instance of Sensor class.
+        """
+        self.position = [x, y, z]
+
 class Environment:
     """
     Class that holds the leaf area and terrain arrays. 
@@ -129,11 +162,14 @@ class Environment:
         Object that holds the coordinates and leaf area for the canopy.
     terrain: Terrain
         Object that holds the coordinates of the terrain.
+    sensors: list[Sensor]
+        List of Sensors present in the environment.
     """
     leaf_area: LeafArea
     terrain: Terrain
+    sensors: list[Sensor]
 
-    def __init__(self, leaf_area: LeafArea, terrain: Terrain = None):
+    def __init__(self, leaf_area: LeafArea, terrain: Terrain = None, sensors: list[Sensor] = None):
         """
         Constructor for Environment object.
 
@@ -143,6 +179,8 @@ class Environment:
             A LeafArea class object.
         terrain: Terrain
             (optional) A Terrain class object. Default is None.
+        sensors: list[Sensor]
+            (optional) A list of Sensor objects. Default is None.
 
         Returns
         -------
@@ -165,4 +203,13 @@ class Environment:
                 self.terrain = terrain
             else:
                 raise ValueError(f"Leaf area grid dimensions must match terrain dimensions. Leaf area is ({leaf_area.width}, {leaf_area.height}) and terrain is ({terrain.width}, {terrain.height})")
+        
+        if sensors != None:
+            # Check types of all sensors
+            for i, sensor in enumerate(sensors):
+                if not isinstance(sensor, Sensor):
+                    raise TypeError(f"Expected a list of objects of type 'Sensor', but got {type(sensor)} at index {i}.")
+            self.sensors = sensors
+        else:
+            self.sensors = None
 

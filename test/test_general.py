@@ -141,9 +141,9 @@ class TestGeneral:
         my_leaf_area = LeafArea.from_uniformgrid(leaf_area_grid)
         my_leaf_area.leaf_area[:, 2] = my_leaf_area.leaf_area[:, 2] + my_terrain_grid[(my_leaf_area.height - my_leaf_area.leaf_area[:, 1] - 1).astype(int), my_leaf_area.leaf_area[:, 0].astype(int)]
 
-        my_sensor_0 = Sensor(150., 150., 50.)
-        my_sensor_1 = Sensor(33., 33., 3.)
-        my_sensor_2 = Sensor(77., 77., 7.7)
+        my_sensor_0 = Sensor(150, 150, 50)
+        my_sensor_1 = Sensor(33, 33, 3, 0.5, 0.5)
+        my_sensor_2 = Sensor(77, 77, 7)
         sensor_list = list[Sensor]
         sensor_list = [my_sensor_0, my_sensor_1, my_sensor_2]
 
@@ -157,6 +157,7 @@ class TestGeneral:
         if SAVE_NEW:
             np.save("test/data/all_result_terr_1.npy", result.terrain_irradiance)
             np.save("test/data/all_result_canopy_1.npy", result.canopy_irradiance)
+            np.save("test/data/all_result_sensor.npy", result.sensor_irradiance)
 
             np.save("test/data/all_result_canopy_flat.npy", result_flat.canopy_irradiance)
             # plot_entire(result.terrain_irradiance, my_terrain.terrain, result.canopy_irradiance, my_solar_position, True)
@@ -223,9 +224,12 @@ class TestGeneral:
             # assert (np.sum(matches_flat) / len(actual_canopy_flat)) >= thresh
 
             # Testing that sensor output coordinates remain the same and that results are consistent
-            assert result.sensor_irradiance[0, 0] == 150.
-            assert result.sensor_irradiance[2, 2] == 7.7
             assert result.get_sensor_irradiance(my_sensor_1) == 1.
+            assert result.get_sensor_irradiance(my_sensor_0) == 0.1445081
+
+            expected_sensor = np.load("test/data/all_result_sensor.npy")
+            np.testing.assert_allclose(expected_sensor, result.sensor_irradiance, atol=1e-6)
+            np.testing.assert_equal(expected_sensor, result.sensor_irradiance)
 
     @pytest.mark.skip()          
     def test_surface_vs_all(self):

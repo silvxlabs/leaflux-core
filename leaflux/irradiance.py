@@ -17,6 +17,10 @@ class RelativeIrradiance:
         Holds the coordinates and their relative irradiance for the surface/topography. Is a numpy array
         with shape (height, width) where each (y, x) coordinate holds the irradiance
         value for that point on the terrain, and y runs north to south.
+    sensor_irradiance: np.ndarray
+        Holds the coordinates and relative irradiance for each sensor. Is an (N, 4) stack where each 
+        row is (x, y, z, irradiance), and y runs south to north. Irradiance values for a particular 
+        provided Sensor object can be retrieved with `get_sensor_irradiance()`.
     
     """
     canopy_irradiance: np.ndarray
@@ -37,13 +41,12 @@ class RelativeIrradiance:
         sensor: Sensor
             Object of type Sensor.
 
-        
         Returns
         -
         float
             Contains the irradiance of the given Sensor.
         """
-        mask = (self.sensor_irradiance[:, 0] == sensor.position[0]) & (self.sensor_irradiance[:, 1] == sensor.position[1]) & (self.sensor_irradiance[:, 2] == sensor.position[2])
+        mask = (self.sensor_irradiance[:, 0] == sensor.sensor[0]) & (self.sensor_irradiance[:, 1] == sensor.sensor[1]) & (self.sensor_irradiance[:, 2] == sensor.sensor[2])
         return self.sensor_irradiance[mask, 3]
 
 

@@ -8,7 +8,11 @@ from .irradiance import *
 from numba import jit
 import pyvista as pv
 
-# Function to do hash map plane sweep
+# Correction for sensor based on tilt and azimuth. Helper function for attenuate_all
+def sensor_correction(solar_azimuth: np.float32, solar_zenith: np.float32, sensor_pitch: np.float32, sensor_azimuth: np.float32):
+    return np.cos(solar_zenith)*np.cos(sensor_pitch) + np.sin(solar_zenith)*np.sin(np.sin(sensor_pitch))*np.cos(solar_azimuth-sensor_azimuth)
+
+# Function to do hash map plane sweep. Helper function for attenuate_all
 @jit
 def plane_sweep(leaf_area_stack: np.ndarray, x_min: int, x_max: int, y_min: int, y_max: int) -> np.ndarray:
     # Create hash map with (x, y) for each possible (x, y)
@@ -247,16 +251,14 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
     r = _get_rot_mat(sol.light_vector)
 
     # Will hold (x, y, z, leaf_area, cum_leaf_area)
-    leaf_area_stack = np.column_stack((env.leaf_area.leaf_area[:, 0], env.leaf_area.leaf_area[:, 1], env.leaf_area.leaf_area[:, 2], env.leaf_area.leaf_area[:, 3], np.zeros_like(env.leaf_area.leaf_area[:, 0])))
-    leaf_area_stack_rot = (r @ leaf_area_stack[:, :3].T).T
-    leaf_area_stack = np.column_stack((leaf_area_stack, leaf_area_stack_rot))
+    leaf_area_stack_rot = (r @ env.leaf_area.leaf_area[:, :3].T).T
+    leaf_area_stack = np.column_stack((env.leaf_area.leaf_area[:, 0], env.leaf_area.leaf_area[:, 1], env.leaf_area.leaf_area[:, 2], env.leaf_area.leaf_area[:, 3], np.zeros_like(env.leaf_area.leaf_area[:, 0]), leaf_area_stack_rot))
 
     # Make terrain area array that will hold giant leaf area values
     if env.terrain != None:
         terrain_leaf_area = np.full_like(env.terrain.terrain[:, 0].flatten(), 2000.0, dtype=np.float32) # Make leaf area very high
-        terrain_area_stack = np.column_stack((env.terrain.terrain[:, 0].flatten(), env.terrain.terrain[:, 1].flatten(), env.terrain.terrain[:, 2].flatten(), terrain_leaf_area, np.ones_like(env.terrain.terrain[:, 0].flatten(), dtype=np.float32)))
-        terrain_area_rot_stack = (r @ terrain_area_stack[:, :3].T).T
-        terrain_area_stack = np.column_stack((terrain_area_stack, terrain_area_rot_stack))
+        terrain_area_rot_stack = (r @ env.terrain.terrain[:, :3].T).T
+        terrain_area_stack = np.column_stack((env.terrain.terrain[:, 0].flatten(), env.terrain.terrain[:, 1].flatten(), env.terrain.terrain[:, 2].flatten(), terrain_leaf_area, np.ones_like(env.terrain.terrain[:, 0].flatten(), dtype=np.float32), terrain_area_rot_stack))
         terrain_area_stack = terrain_area_stack.astype(np.float32)
 
         # Make dummy terrain area stack that will have projected leaf area on it
@@ -270,14 +272,13 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
         leaf_terrain_dummy_stack = leaf_area_stack
     
     if env.sensors is not None:
-        for sensor in env.sensors:
-            # Rotate and create row
-            sensor_rot = (r @ np.array([sensor.position[0], sensor.position[1], sensor.position[2]]).reshape((1, 3)).T).T
-            # (x, y, z, leaf_area = 0.0, cum_leaf_area = 0.0, x_rot, y_rot, z_rot)
-            sensor_row = np.column_stack((sensor.position[0], sensor.position[1], sensor.position[2], 0.0, 0.0, sensor_rot))
+        # Rotate
+        sensor_rot = (r @ env.sensors[:, :3].T).T
+        # (x, y, z, leaf_area = 0.0, cum_leaf_area = 0.0, x_rot, y_rot, z_rot)
+        sensor_stack = np.column_stack((env.sensors[:, 0].flatten(), env.sensors[:, 1].flatten(), env.sensors[:, 2].flatten(), np.zeros_like(env.sensors[:, 0]), np.zeros_like(env.sensors[:, 0]), sensor_rot))
 
-            # Add to leaf terrain dummy stack
-            leaf_terrain_dummy_stack = np.vstack((leaf_terrain_dummy_stack, sensor_row))
+        # Add to leaf terrain dummy stack
+        leaf_terrain_dummy_stack = np.vstack((leaf_terrain_dummy_stack, sensor_stack))
 
     # Floor x and y values to "bucket"
     leaf_terrain_dummy_stack[:, 5], x_rem = np.divmod(leaf_terrain_dummy_stack[:, 5], 1)
@@ -298,25 +299,47 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
     # Irradiance
     leaf_terrain_dummy_stack[:, 4] = np.exp(-extn * leaf_terrain_dummy_stack[:, 4])
 
-    sensor_irr = np.empty((0, 4), dtype=np.float32)
-    if(env.sensors != None):
-        for sensor in env.sensors:
-            # Extract point, add to list
-            sensor_mask = (leaf_terrain_dummy_stack[:, 0] == sensor.position[0]) & (leaf_terrain_dummy_stack[:, 1] == sensor.position[1]) & (leaf_terrain_dummy_stack[:, 2] == sensor.position[2])
-            sensor_row = np.column_stack((leaf_terrain_dummy_stack[sensor_mask, 0], leaf_terrain_dummy_stack[sensor_mask, 1], leaf_terrain_dummy_stack[sensor_mask, 2], leaf_terrain_dummy_stack[sensor_mask, 4]))
-            sensor_irr = np.vstack((sensor_irr, sensor_row))
+    if(env.sensors is not None):
+        # Mask out values that are the sensors
+        dtype = [('x', np.int32), ('y', np.int32), ('z', np.int32)]
+        structured_ltds = leaf_terrain_dummy_stack[:, :3].astype(np.int32).view(dtype)
+        structured_ss = env.sensors[:, :3].astype(np.int32).view(dtype)
+        sensor_mask = np.isin(structured_ltds, structured_ss).flatten()
+        sensors = leaf_terrain_dummy_stack[sensor_mask] # Get stack of just sensors
 
-            # Remove from leaf_terrain_dummy_stack
-            leaf_terrain_dummy_stack = leaf_terrain_dummy_stack[~sensor_mask]
+        # Applying tilt correction to the sensors that provided pitch and azimuth
+        env.sensors = env.sensors[env.sensors[:, 2].argsort()[::-1]] # Sort so consistent w sorted sensors from ll
+        nan_mask = ~np.isnan(env.sensors[:, 3]) & ~np.isnan(env.sensors[:, 4]) # Mask for sensors with provided values
+        sensors[nan_mask, 4] *= sensor_correction(sol.azimuth, sol.zenith, env.sensors[nan_mask, 3], env.sensors[nan_mask, 4])
+
+        sensor_irr_stack = np.column_stack((sensors[:, :3], sensors[:, 4]))
+        sensor_irr_stack = sensor_irr_stack.astype(np.float32)
+
+        # Remove from leaf_terrain_dummy_stack
+        leaf_terrain_dummy_stack = leaf_terrain_dummy_stack[~sensor_mask]
 
     if env.terrain == None:
         canopy_result_stack = np.column_stack((leaf_terrain_dummy_stack[:, :3], leaf_terrain_dummy_stack[:, 4]))
         relative_irradiance = RelativeIrradiance(canopy_irradiance=canopy_result_stack)
 
     else:
+        # Get tilt correction for terrain
+        dz_dy, dz_dx = np.gradient(env.terrain.terrain_grid) # Get derivatives
+        nx = -dz_dx
+        ny = -dz_dy
+        nz = np.ones_like(env.terrain.terrain_grid)
+        mag = np.sqrt(nx**2 + ny**2 + nz**2)
+        nx /= mag
+        ny /= mag
+        nz /= mag
+        normals = np.stack((nx, ny, nz), axis=-1)
+        dot = np.einsum("ijk,k->ij", normals, -sol.light_vector)
+        irr_scale = np.clip(dot, 0, 1)
+
         # Isolate terrain surface irradiance
         surface_mask = leaf_terrain_dummy_stack[:, 3] == 0.0
         surface = leaf_terrain_dummy_stack[surface_mask, :]
+        surface[:, 4] *= irr_scale[(env.terrain.height - surface[:, 1] - 1).astype(int), surface[:, 0].astype(int)] # Apply tilt correction
         surface_result_grid = np.zeros((env.leaf_area.height, env.leaf_area.width), dtype=np.float32)
         surface_result_grid[(env.leaf_area.height - np.round(surface[:, 1]) - 1).astype(int), np.round(surface[:, 0]).astype(int)] = surface[:, 4]
 
@@ -326,8 +349,8 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
         canopy_result_stack = canopy_result_stack.astype(np.float32)
 
         relative_irradiance = RelativeIrradiance(surface_result_grid, canopy_result_stack)
-    if(env.sensors != None):
-        relative_irradiance.sensor_irradiance = sensor_irr
+    if(env.sensors is not None):
+        relative_irradiance.sensor_irradiance = sensor_irr_stack
     
     return relative_irradiance
 
@@ -386,14 +409,14 @@ def plot_irradiance(relative_irradiance: RelativeIrradiance, terrain_coords: Ter
         show_edges=False
     )
 
-    # Adding sensors in red
+    # Adding sensors as large red spheres
     if relative_irradiance.sensor_irradiance is not None and show_sensors:
         sensor_coords = relative_irradiance.sensor_irradiance[:, :3]
         sensor_point_cloud = pv.PolyData(sensor_coords)
 
         plotter.add_mesh(
             sensor_point_cloud,
-            color="red",
+            color='red',
             point_size=20,
             render_points_as_spheres=True,
             show_edges=False

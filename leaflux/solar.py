@@ -18,11 +18,19 @@ class SolarPosition:
 
     light_vector: np.array
         Holds the resulting light vector as a numpy array of three floats.
+
+    zenith: float
+        The zenith angle in radians.
+
+    azimuth: float
+        The azimuth angle in radians.
     
     """
     timestamp: datetime
     latitude: float
     light_vector: np.array
+    zenith: float
+    azimuth: float
 
     def __init__(self, datetime: datetime, latitude: float):
         """
@@ -66,3 +74,8 @@ class SolarPosition:
         vec = np.array([i, j, k])
         norm = np.linalg.norm(vec)
         self.light_vector = np.array([i/norm, j/norm, k/norm])
+
+        # Zenith and azimuth in radians
+        self.zenith = solar_position['zenith'].iloc[0]
+        self.azimuth = solar_position['azimuth'].iloc[0]
+        

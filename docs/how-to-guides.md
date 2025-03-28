@@ -37,12 +37,15 @@ for testing and validation.
 
 (x, y, z) coordinates for sensors are expected to have y coordinates running south to north. 
 
+If you provide a pitch and azimuth for a sensor, the returned irradiance will be corrected for the tilt of the sensor. If either
+pitch or azimuth are omitted, returned irradiance will not be corrected. Pitch and azimuth are expected in radians.
+
 Sensors must be provided as a list of sensors. Create a list of sensors like this:
 
 ```
-my_sensor_0 = Sensor(300., 150., 20.)
-my_sensor_1 = Sensor(200., 100., 15.)
-my_sensor_2 = Sensor(333., 333., 33.)
+my_sensor_0 = Sensor(300, 150, 20) # No pitch or azimuth
+my_sensor_1 = Sensor(200, 100, 15, 1.2, 2.2) # Providing pitch and azimuth
+my_sensor_2 = Sensor(333, 333, 33, 1.0, 2.5) # Prividing pitch and azimuth
 my_sensors = list[Sensor]
 my_sensors = [my_sensor_0, my_sensor_1, my_sensor_2]
 ```
@@ -82,7 +85,7 @@ my_result = attenuate_surface(my_environment, my_solar_position)
 my_terrain_irradiance = my_result.terrain_irradiance
 ```
 
-`attenuate_all()` returns irradiance on the surface and in the canopy. If no terrain is provided, *only* canopy irradiance is returned. If terrain is
+`attenuate_all()` returns irradiance on the surface and in the canopy. If no terrain is provided, **only** canopy irradiance is returned. If terrain is
 provided, results for the canopy and surface are returned. 
 
 ```
@@ -98,9 +101,8 @@ sensor_0_irradiance = my_result.get_sensor_irradiance(my_sensor_0)
 ```
 
 Sensor results can also be accessed directly via the `sensor_irradiance` attribute of the `RelativeIrradiance` class. `sensor_irradiance` is an 
-(N, 4) numpy array where each row is (x, y, z, irradiance), and where the (x, y, z) coordinates match those of the sensor in the list of sensors
-provided to the `Environment` used to get the result. For example, given the sensor example above, the sensor irradiance of `my_sensor_0` could
-also be obtained like this
+(N, 4) numpy array where each row is (x, y, z, irradiance). The order of the returned sensors is not guarenteed to be the same as the order
+provided. This is how you could access information about the first returned sensor:
 
 ```
 sensor_0_irradiance = my_result.sensor_irradiance[0, 4] # Irradiance

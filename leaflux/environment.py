@@ -90,10 +90,13 @@ class Terrain:
         Width of terrain, from shape of input.
     height: int
         Height of terrain, from shape of input. 
+    terrain_grid: np.ndarray
+        The original 2.5D provided grid, stored for internal use in later calculations.
     """
     terrain: np.ndarray
     width: int
     height: int
+    terrain_grid: np.ndarray
 
     # 2.5D numpy array
     def __init__(self, terrain: np.ndarray):
@@ -115,6 +118,8 @@ class Terrain:
         self.width = terrain.shape[1] # x
         self.height = terrain.shape[0] # y
 
+        self.terrain_grid = terrain
+
         terr_x, terr_y = np.meshgrid(np.arange(self.width), np.arange(self.height), indexing='xy')
         terr_y = self.height - terr_y - 1 # Flipping to be south->north
         self.terrain = np.column_stack((terr_x.ravel(), terr_y.ravel(), terrain.flatten())) # Rows of (x, y, z)
@@ -125,32 +130,42 @@ class Sensor:
 
     Attributes
     -
-    position: list[float]
-        Holds the (x, y, z) coordinates of the sensor. Y coordinates run south to north.
+    sensor: np.ndarray
+        Holds the (x, y, z) coordinates of the sensor, as well as the pitch and azimuth (if provided). Y coordinates run south to north
+        and angles are in radians. Is a (5,) shaped array where the single row is (x, y, z, pitch, azimuth).
 
     """
-    position: list[float]
+    sensor: np.array
 
-    def __init__(self, x: float, y: float, z: float):
+    def __init__(self, x: int, y: int, z: int, pitch: float = None, azimuth: float = None):
         """
-        Constructor for Sensor object.
+        Constructor for Sensor object. If pitch **and** azimuth are provided, the returned 
+        irradiance will be corrected for the tilt of the sensor relative to the SolarPosition 
+        provided to `attenuate_all()`. If either pitch or azimuth are not provided, returned
+        irradiance will not be corrected.
 
         Parameters
         -
-        x: float
+        x: int
             x coordinate of sensor. 
 
-        y: float
+        y: int
             y coordinate of sensor. Y coordinates are expected to run south to north.
 
-        z: float
+        z: int
             z coordinate of sensor.
+        
+        pitch: float
+            Pitch of sensor in radians. Default is None.
+        
+        azimuth: float
+            Azimuth angle of sensor in radians. Default is None.
 
         Returns
         -
         Instance of Sensor class.
         """
-        self.position = [x, y, z]
+        self.sensor = np.array([x, y, z, pitch, azimuth], dtype=np.float32)
 
 class Environment:
     """
@@ -162,12 +177,12 @@ class Environment:
         Object that holds the coordinates and leaf area for the canopy.
     terrain: Terrain
         Object that holds the coordinates of the terrain.
-    sensors: list[Sensor]
-        List of Sensors present in the environment.
+    sensors: np.ndarray
+        A column stack of Sensors present in the environment. Each row of the array is like (x, y, z, pitch, azimuth)
     """
     leaf_area: LeafArea
     terrain: Terrain
-    sensors: list[Sensor]
+    sensors: np.ndarray
 
     def __init__(self, leaf_area: LeafArea, terrain: Terrain = None, sensors: list[Sensor] = None):
         """
@@ -209,7 +224,7 @@ class Environment:
             for i, sensor in enumerate(sensors):
                 if not isinstance(sensor, Sensor):
                     raise TypeError(f"Expected a list of objects of type 'Sensor', but got {type(sensor)} at index {i}.")
-            self.sensors = sensors
+            self.sensors = np.vstack([sensor.sensor for sensor in sensors]) # Stack sensors
         else:
             self.sensors = None
 

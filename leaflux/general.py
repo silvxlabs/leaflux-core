@@ -304,8 +304,9 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
         dtype = [('x', np.int32), ('y', np.int32), ('z', np.int32)]
         structured_ltds = leaf_terrain_dummy_stack[:, :3].astype(np.int32).view(dtype)
         structured_ss = env.sensors[:, :3].astype(np.int32).view(dtype)
-        sensor_mask = np.isin(structured_ltds, structured_ss).flatten()
-        sensors = leaf_terrain_dummy_stack[sensor_mask] # Get stack of just sensors
+        sensor_mask_0 = np.isin(structured_ltds, structured_ss).flatten() # Coord mask
+        sensor_mask_1 = leaf_terrain_dummy_stack[:, 3] == 0.0 # Mask for zero leaf area
+        sensors = leaf_terrain_dummy_stack[sensor_mask_0 & sensor_mask_1] # Get stack of just sensors
 
         # Applying tilt correction to the sensors that provided pitch and azimuth
         env.sensors = env.sensors[env.sensors[:, 2].argsort()[::-1]] # Sort so consistent w sorted sensors from ll
@@ -316,7 +317,7 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
         sensor_irr_stack = sensor_irr_stack.astype(np.float32)
 
         # Remove from leaf_terrain_dummy_stack
-        leaf_terrain_dummy_stack = leaf_terrain_dummy_stack[~sensor_mask]
+        leaf_terrain_dummy_stack = leaf_terrain_dummy_stack[~(sensor_mask_0 & sensor_mask_1)]
 
     if env.terrain == None:
         canopy_result_stack = np.column_stack((leaf_terrain_dummy_stack[:, :3], leaf_terrain_dummy_stack[:, 4]))

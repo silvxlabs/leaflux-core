@@ -10,7 +10,7 @@ import pyvista as pv
 
 # Correction for sensor based on tilt and azimuth. Helper function for attenuate_all
 def sensor_correction(solar_azimuth: np.float32, solar_zenith: np.float32, sensor_pitch: np.float32, sensor_azimuth: np.float32):
-    return np.cos(solar_zenith)*np.cos(sensor_pitch) + np.sin(solar_zenith)*np.sin(np.sin(sensor_pitch))*np.cos(solar_azimuth-sensor_azimuth)
+    return np.cos(solar_zenith)*np.cos(sensor_pitch) + np.sin(solar_zenith)*np.sin(sensor_pitch)*np.cos(solar_azimuth-sensor_azimuth)
 
 # Function to do hash map plane sweep. Helper function for attenuate_all
 @jit
@@ -340,7 +340,7 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
         # Isolate terrain surface irradiance
         surface_mask = leaf_terrain_dummy_stack[:, 3] == 0.0
         surface = leaf_terrain_dummy_stack[surface_mask, :]
-        surface[:, 4] *= irr_scale[(env.terrain.height - surface[:, 1] - 1).astype(int), surface[:, 0].astype(int)] # Apply tilt correction
+        # surface[:, 4] *= irr_scale[(env.terrain.height - surface[:, 1] - 1).astype(int), surface[:, 0].astype(int)] # Apply tilt correction
         surface_result_grid = np.zeros((env.leaf_area.height, env.leaf_area.width), dtype=np.float32)
         surface_result_grid[(env.leaf_area.height - np.round(surface[:, 1]) - 1).astype(int), np.round(surface[:, 0]).astype(int)] = surface[:, 4]
 

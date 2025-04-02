@@ -10,7 +10,7 @@ import pyvista as pv
 
 # Correction for sensor based on tilt and azimuth. Helper function for attenuate_all
 def sensor_correction(solar_azimuth: np.float32, solar_zenith: np.float32, sensor_pitch: np.float32, sensor_azimuth: np.float32):
-    return np.cos(solar_zenith)*np.cos(sensor_pitch) + np.sin(solar_zenith)*np.sin(np.sin(sensor_pitch))*np.cos(solar_azimuth-sensor_azimuth)
+    return np.cos(solar_zenith)*np.cos(sensor_pitch) + np.sin(solar_zenith)*np.sin(sensor_pitch)*np.cos(solar_azimuth-sensor_azimuth)
 
 # Function to do hash map plane sweep. Helper function for attenuate_all
 @jit

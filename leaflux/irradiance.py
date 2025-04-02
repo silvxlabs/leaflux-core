@@ -47,7 +47,7 @@ class RelativeIrradiance:
             Contains the irradiance of the given Sensor.
         """
         mask = (self.sensor_irradiance[:, 0] == sensor.sensor[0]) & (self.sensor_irradiance[:, 1] == sensor.sensor[1]) & (self.sensor_irradiance[:, 2] == sensor.sensor[2])
-        return self.sensor_irradiance[mask, 3]
+        return self.sensor_irradiance[mask, 3].item()
 
 
 

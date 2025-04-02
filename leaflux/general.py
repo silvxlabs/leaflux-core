@@ -340,7 +340,7 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
         # Isolate terrain surface irradiance
         surface_mask = leaf_terrain_dummy_stack[:, 3] == 0.0
         surface = leaf_terrain_dummy_stack[surface_mask, :]
-        # surface[:, 4] *= irr_scale[(env.terrain.height - surface[:, 1] - 1).astype(int), surface[:, 0].astype(int)] # Apply tilt correction
+        surface[:, 4] *= irr_scale[(env.terrain.height - surface[:, 1] - 1).astype(int), surface[:, 0].astype(int)] # Apply tilt correction
         surface_result_grid = np.zeros((env.leaf_area.height, env.leaf_area.width), dtype=np.float32)
         surface_result_grid[(env.leaf_area.height - np.round(surface[:, 1]) - 1).astype(int), np.round(surface[:, 0]).astype(int)] = surface[:, 4]
 

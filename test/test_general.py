@@ -5,6 +5,11 @@ from leaflux.general import _get_rot_mat, _attenuate_surface_flat, _attenuate_su
 from leaflux.solar import *
 from leaflux.environment import *
 
+# Testing at this datetime/lat/long for all here for consistency:
+# my_datetime = datetime(2024, 6, 15, 20, 00)
+# my_latitude = 40.
+# my_longitude = -120.
+
 class TestGeneral:
     @pytest.mark.parametrize(
         "vector,expected",
@@ -28,38 +33,45 @@ class TestGeneral:
     
     def test_attenuate_surface_flat(self):
         # Test against flat_result_1.npy
-        # Which is datetime(2024, 6, 15, 16, 00) and lat = 40.
-        my_datetime = datetime(2024, 6, 15, 16, 00)
+        my_datetime = datetime(2024, 6, 15, 20, 00)
         my_latitude = 40.
-        my_solar_position = SolarPosition(my_datetime, my_latitude)
+        my_longitude = -120.
+        my_solar_position = SolarPosition(my_datetime, my_latitude, my_longitude)
 
         leaf_area_grid = np.load("test/data/leaf_area_grid.npy")
         my_leaf_area = LeafArea.from_uniformgrid(leaf_area_grid)
 
-        expected = np.load("test/data/flat_result_1.npy")
-
         my_flat_env = Environment(my_leaf_area)
         sf1 = attenuate_surface(my_flat_env, my_solar_position)
-        np.testing.assert_allclose(expected, sf1.terrain_irradiance, atol=1e-6)
 
-        # Raising
-        my_leaf_area.leaf_area[:, 2] += 100
-        my_flat_env_raised = Environment(my_leaf_area)
-        sf2 = attenuate_surface(my_flat_env_raised, my_solar_position)
-        np.testing.assert_allclose(expected, sf2.terrain_irradiance, atol=1e-6)
+        SAVE_NEW = False
+        if SAVE_NEW:
+            np.save("test/data/flat_result_1.npy", sf1.terrain_irradiance)
 
-        # Lowering
-        my_leaf_area.leaf_area[:, 2] -= 200
-        my_flat_env_lowered = Environment(my_leaf_area)
-        sf3 = attenuate_surface(my_flat_env_lowered, my_solar_position)
-        np.testing.assert_allclose(expected, sf3.terrain_irradiance, atol=1e-6)
+        ASSERT = True
+        if ASSERT:
+            expected = np.load("test/data/flat_result_1.npy")
+            
+            np.testing.assert_allclose(expected, sf1.terrain_irradiance, atol=1e-6)
+
+            # Raising
+            my_leaf_area.leaf_area[:, 2] += 100
+            my_flat_env_raised = Environment(my_leaf_area)
+            sf2 = attenuate_surface(my_flat_env_raised, my_solar_position)
+            np.testing.assert_allclose(expected, sf2.terrain_irradiance, atol=1e-6)
+
+            # Lowering
+            my_leaf_area.leaf_area[:, 2] -= 200
+            my_flat_env_lowered = Environment(my_leaf_area)
+            sf3 = attenuate_surface(my_flat_env_lowered, my_solar_position)
+            np.testing.assert_allclose(expected, sf3.terrain_irradiance, atol=1e-6)
 
     def test_attenuate_surface_terrain(self):
         # Test against terrain_result_1.npy
-        # Which is datetime(2024, 6, 15, 16, 00) and lat = 40.
-        my_datetime = datetime(2024, 6, 15, 16, 00)
+        my_datetime = datetime(2024, 6, 15, 20, 00)
         my_latitude = 40.
-        my_solar_position = SolarPosition(my_datetime, my_latitude)
+        my_longitude = -120.
+        my_solar_position = SolarPosition(my_datetime, my_latitude, my_longitude)
 
         leaf_area_grid = np.load("test/data/leaf_area_grid.npy")
         my_leaf_area = LeafArea.from_uniformgrid(leaf_area_grid)
@@ -78,39 +90,46 @@ class TestGeneral:
         my_env.leaf_area.leaf_area[:, 2] += 300
         st3 = attenuate_surface(my_env, my_solar_position)
 
-        expected = np.load("test/data/terrain_result_1.npy")
+        SAVE_NEW = False
+        if SAVE_NEW:
+            np.save("test/data/terrain_result_1.npy", st1.terrain_irradiance)
 
-        actual = st1.terrain_irradiance
+        ASSERT = True
+        if ASSERT:
+            expected = np.load("test/data/terrain_result_1.npy")
 
-        errors = np.abs(expected - actual)
+            actual = st1.terrain_irradiance
 
-        error_indices = np.where(errors > 0)[0]
+            errors = np.abs(expected - actual)
 
-        errors_above_1 = np.sum(errors >= 1.0)
+            error_indices = np.where(errors > 0)[0]
 
-        print("Indices of errors:", error_indices)
-        print("Total errors: ", len(error_indices))
-        print("Number of errors with difference >= 1.0:", errors_above_1)
+            errors_above_1 = np.sum(errors >= 1.0)
 
-        expected_sum = np.sum(expected)
-        actual_sum = np.sum(actual)
+            print("Indices of errors:", error_indices)
+            print("Total errors: ", len(error_indices))
+            print("Number of errors with difference >= 1.0:", errors_above_1)
 
-        print("Expected sum: ", expected_sum)
-        print("Actual sum: ", actual_sum)
+            expected_sum = np.sum(expected)
+            actual_sum = np.sum(actual)
 
-        # Test against expected
-        assert (np.abs(actual_sum - expected_sum) / expected_sum) < 0.25
+            print("Expected sum: ", expected_sum)
+            print("Actual sum: ", actual_sum)
 
-        # Test against lowered and raised 
-        np.testing.assert_equal(st1.terrain_irradiance, st2.terrain_irradiance)
-        np.testing.assert_equal(st1.terrain_irradiance, st3.terrain_irradiance)
+            # Test against expected
+            assert (np.abs(actual_sum - expected_sum) / expected_sum) < 0.25
 
-        # np.testing.assert_allclose(expected, actual, atol=1e-6)
+            # Test against lowered and raised 
+            np.testing.assert_equal(st1.terrain_irradiance, st2.terrain_irradiance)
+            np.testing.assert_equal(st1.terrain_irradiance, st3.terrain_irradiance)
+
+            # np.testing.assert_allclose(expected, actual, atol=1e-6)
     
     def test_attenuate_surface(self):
-        my_datetime = datetime(2024, 6, 15, 16, 00)
+        my_datetime = datetime(2024, 6, 15, 20, 00)
         my_latitude = 40.
-        my_solar_position = SolarPosition(my_datetime, my_latitude)
+        my_longitude = -120.
+        my_solar_position = SolarPosition(my_datetime, my_latitude, my_longitude)
 
         leaf_area_grid = np.load("test/data/leaf_area_grid.npy")
         my_leaf_area = LeafArea.from_uniformgrid(leaf_area_grid)
@@ -130,9 +149,10 @@ class TestGeneral:
         assert surface2.terrain_irradiance is not None
 
     def test_attenuate_all(self):
-        my_datetime = datetime(2024, 6, 15, 18, 00)
+        my_datetime = datetime(2024, 6, 15, 20, 00)
         my_latitude = 40.
-        my_solar_position = SolarPosition(my_datetime, my_latitude)
+        my_longitude = -120.
+        my_solar_position = SolarPosition(my_datetime, my_latitude, my_longitude)
 
         my_terrain_grid = np.load("test/data/terrain_input300.npy")
         my_terrain = Terrain(my_terrain_grid)
@@ -232,9 +252,10 @@ class TestGeneral:
 
     @pytest.mark.skip()          
     def test_surface_vs_all(self):
-        my_datetime = datetime(2024, 6, 15, 9, 00)
+        my_datetime = datetime(2024, 6, 15, 20, 00)
         my_latitude = 40.
-        my_solar_position = SolarPosition(my_datetime, my_latitude)
+        my_longitude = -120.
+        my_solar_position = SolarPosition(my_datetime, my_latitude, my_longitude)
 
         target_width = 500
         target_height = 500
@@ -258,9 +279,10 @@ class TestGeneral:
     
     @pytest.mark.skip()
     def test_flat_vs_all(self):
-        my_datetime = datetime(2024, 6, 15, 9, 00)
+        my_datetime = datetime(2024, 6, 15, 20, 00)
         my_latitude = 40.
-        my_solar_position = SolarPosition(my_datetime, my_latitude)
+        my_longitude = -120.
+        my_solar_position = SolarPosition(my_datetime, my_latitude, my_longitude)
 
         target_width = 500
         target_height = 500

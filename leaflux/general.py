@@ -66,7 +66,7 @@ def _get_rot_mat(solar_vector: np.array) -> np.ndarray:
     return i + np.sin(theta)*k_mat + (1.0-np.cos(theta))*(k_mat@k_mat)
 
 # Light attenuation algorithm for flat surface
-def _attenuate_surface_flat(env: Environment, sol: SolarPosition, extn: float) -> RelativeIrradiance:
+def _attenuate_surface_flat(env: Environment, sol: SolarPosition, extn: float) -> Irradiance:
 
     # For flooring values
     leaf_area_min = np.min(env.leaf_area.leaf_area[:, 2])
@@ -91,10 +91,10 @@ def _attenuate_surface_flat(env: Environment, sol: SolarPosition, extn: float) -
     # 4) Compute irradiance using the Beer-Lambert law
     leaf_area_surface_grid = np.exp(-extn * leaf_area_surface_grid)
 
-    return RelativeIrradiance(terrain_irradiance=leaf_area_surface_grid)
+    return Irradiance(solar_position=sol, terrain_irradiance=leaf_area_surface_grid)
 
 # Light attenuation algorithm for irradiance on terrain surface
-def _attenuate_surface_terrain(env: Environment, sol: SolarPosition, extn: float) -> RelativeIrradiance:
+def _attenuate_surface_terrain(env: Environment, sol: SolarPosition, extn: float) -> Irradiance:
     # round_dec = 7
     # Create copy
     leaf_area = np.copy(env.leaf_area.leaf_area)
@@ -186,11 +186,11 @@ def _attenuate_surface_terrain(env: Environment, sol: SolarPosition, extn: float
     terrain_result_grid = np.zeros((env.terrain.height, env.terrain.width))
     terrain_result_grid[(env.terrain.height - env.terrain.terrain[:, 1].astype(int) - 1), env.terrain.terrain[:, 0].astype(int)] = terrain_stack[:, 3]
 
-    return RelativeIrradiance(terrain_irradiance=terrain_result_grid)
+    return Irradiance(solar_position=sol, terrain_irradiance=terrain_result_grid)
 
-def attenuate_surface(env: Environment, sol: SolarPosition, extn: float = 0.5) -> RelativeIrradiance:
+def attenuate_surface(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Irradiance:
     """
-    Produces RelativeIrradiance object, containing the irradiance on the 
+    Produces Irradiance object, containing the relative irradiance on the 
     terrain surface, for a given Environment and SolarPosition. Runs the irradiance attenuation
     model on either the surface provided, if it was provided, or on a flat surface. Both algorithms 
     manipulate z values to be in relation to 0, but provided LeafArea and Terrain z values can be 
@@ -218,7 +218,7 @@ def attenuate_surface(env: Environment, sol: SolarPosition, extn: float = 0.5) -
 
     Returns
     -------
-    RelativeIrradiance
+    Irradiance
         Class containing the resulting relative irradiance for the terrain surface.
     """
     if env.terrain is None:
@@ -226,9 +226,9 @@ def attenuate_surface(env: Environment, sol: SolarPosition, extn: float = 0.5) -
     else:
         return _attenuate_surface_terrain(env, sol, extn)
 
-def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> RelativeIrradiance:
+def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Irradiance:
     """
-    Produces a RelativeIrradiance object containing the relative irradiance for the canopy, and, if appropriate information 
+    Produces a Irradiance object containing the relative irradiance for the canopy, and, if appropriate information 
     was provided, the terrain and sensors.
 
     Parameters
@@ -245,7 +245,7 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
     
     Returns
     -
-    RelativeIrradiance
+    Irradiance
         Class containing the resulting relative irradiance for the canopy, the terrain (if provided), and the sensors (if provided).
     """
     r = _get_rot_mat(sol.light_vector)
@@ -321,7 +321,7 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
 
     if env.terrain == None:
         canopy_result_stack = np.column_stack((leaf_terrain_dummy_stack[:, :3], leaf_terrain_dummy_stack[:, 4]))
-        relative_irradiance = RelativeIrradiance(canopy_irradiance=canopy_result_stack)
+        relative_irradiance = Irradiance(solar_position=sol, canopy_irradiance=canopy_result_stack)
 
     else:
         # Get tilt correction for terrain
@@ -349,26 +349,26 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Re
         canopy_result_stack = np.column_stack((leaf_terrain_dummy_stack[canopy_mask, 0], leaf_terrain_dummy_stack[canopy_mask, 1], leaf_terrain_dummy_stack[canopy_mask, 2], leaf_terrain_dummy_stack[canopy_mask, 4]))
         canopy_result_stack = canopy_result_stack.astype(np.float32)
 
-        relative_irradiance = RelativeIrradiance(surface_result_grid, canopy_result_stack)
+        relative_irradiance = Irradiance(solar_position=sol, terrain_irradiance=surface_result_grid, canopy_irradiance=canopy_result_stack)
     if(env.sensors is not None):
         relative_irradiance.sensor_irradiance = sensor_irr_stack
     
     return relative_irradiance
 
-def plot_irradiance(relative_irradiance: RelativeIrradiance, terrain_coords: Terrain = None, solar_position: SolarPosition = None, show_sensors = False, show_axes: bool = False):
+def plot_irradiance(irr: Irradiance, terrain_coords: Terrain = None, show_solar_vector: bool = False, show_sensors = False, show_axes: bool = False):
     """
     Uses pyvista to plot the irradiance for the canopy and terrain (if available), optionally showing the solar direction vector, sensors (if available), and axes. The optional 
     parameters can be helpful for debugging.
 
     Parameters
     -
-    relative_irradiance: RelativeIrradiance
-        Object of type RelativeIrradiance that has been returned from `attenuate_all` or `attenuate_surface`
+    irr: Irradiance
+        Object of type Irradiance that has been returned from `attenuate_all` or `attenuate_surface`
     terrain_coords: Terrain
         (optional) Object of type Terrain. This is used to plot the z values of the terrain. Default is None but is *required* if you 
-        provided a `RelativeIrradiance` with terrain.
-    solar_position: SolarPosition
-        (optional) Object of type SolarPosition. Provide this if you would like an arrow in the direction of the solar vector to be drawn. Default is None.
+        provided a `Irradiance` with terrain.
+    show_solar_vector: bool
+        (optional) Bool indicating if an arrow in the direction of the solar vector will be drawn. Default is False.
     show_sensors: bool
         (optional) Bool indicating whether sensors, if they exist, will be shown. Default is False.
     show_axes: bool
@@ -378,32 +378,32 @@ def plot_irradiance(relative_irradiance: RelativeIrradiance, terrain_coords: Ter
     plotter = pv.Plotter()
 
     # If there is only canopy to plot
-    all_irr = relative_irradiance.canopy_irradiance
+    all_irr = irr.canopy_irradiance
 
     # If there is terrain, plot this too
-    if relative_irradiance.terrain_irradiance is not None:
+    if irr.terrain_irradiance is not None:
         if not isinstance(terrain_coords, Terrain):
             raise TypeError(f"Expected an object of type 'Terrain', but got {type(terrain)}. Please supply terrain coordinates.")
-        terrain_stack = Terrain(relative_irradiance.terrain_irradiance)
+        terrain_stack = Terrain(irr.terrain_irradiance)
         # x, y, z, irr
         terrain = np.column_stack((terrain_stack.terrain[:, 0].ravel(), terrain_stack.terrain[:, 1].ravel(), terrain_coords.terrain[:, 2].ravel(), terrain_stack.terrain[:, 2].ravel()))
 
         # Adding canopy and terrain
-        if relative_irradiance.canopy_irradiance is not None:
-            all_irr = np.vstack((terrain, relative_irradiance.canopy_irradiance))
+        if irr.canopy_irradiance is not None:
+            all_irr = np.vstack((terrain, irr.canopy_irradiance))
         # Unless there is only terrain
         else:
             all_irr = terrain
     
     coords = all_irr[:, :3]
-    irr = all_irr[:, 3]
+    irr_scalars = all_irr[:, 3]
 
     irr_point_cloud = pv.PolyData(coords)
-    irr_point_cloud["Relative Irradiance"] = irr
+    irr_point_cloud["Irradiance"] = irr_scalars
 
     plotter.add_mesh(
         irr_point_cloud,
-        scalars="Relative Irradiance",
+        scalars="Irradiance",
         cmap="viridis",            
         point_size=6,
         render_points_as_spheres=True,
@@ -411,8 +411,8 @@ def plot_irradiance(relative_irradiance: RelativeIrradiance, terrain_coords: Ter
     )
 
     # Adding sensors as large red spheres
-    if relative_irradiance.sensor_irradiance is not None and show_sensors:
-        sensor_coords = relative_irradiance.sensor_irradiance[:, :3]
+    if irr.sensor_irradiance is not None and show_sensors:
+        sensor_coords = irr.sensor_irradiance[:, :3]
         sensor_point_cloud = pv.PolyData(sensor_coords)
 
         plotter.add_mesh(
@@ -425,11 +425,11 @@ def plot_irradiance(relative_irradiance: RelativeIrradiance, terrain_coords: Ter
 
     # Adding solar direction arrow in red
     # In (x, y, z)
-    if solar_position is not None:
+    if show_solar_vector:
         x_med = np.min(all_irr[:, 0]) + ((np.max(all_irr[:, 0]) - np.min(all_irr[:, 0])) / 2.)
         y_med = np.min(all_irr[:, 1]) + ((np.max(all_irr[:, 1]) - np.min(all_irr[:, 1])) / 2.)
         z_range = np.max(all_irr[:, 2]) - np.min(all_irr[:, 2])
-        arrow = pv.Arrow(start=(x_med, y_med, np.max(all_irr[:, 2]) + z_range), direction=solar_position.light_vector, scale=100)
+        arrow = pv.Arrow(start=(x_med, y_med, np.max(all_irr[:, 2]) + z_range), direction=irr.solar_position.light_vector, scale=100)
         plotter.add_mesh(arrow, color="red")
 
     # Adding axes

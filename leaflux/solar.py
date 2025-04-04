@@ -5,16 +5,19 @@ from .dependencies import *
 class SolarPosition:
     """
     Class that holds information about the position of the sun for a given date, 
-    time, and latitude.
+    time, latitude, and longitude.
 
     Attributes
     ----------
     timestamp: datetime
-        The date and time. By default is in UTC.
+        The date and time. Must be in UTC.
     
     latitude: float
-        Latitude for where the solar position will be found. Can be any float
-        between -90 and 90.
+        Latitide in degrees at which to run light model. Positive south of equator, negative to south. Must be between -90 and 90.
+    
+    longitude: float
+        Longitude in degrees at which to run the light model. Positive south of prime meridian, negative to the west. Must be between -180
+        and 180.
 
     light_vector: np.array
         Holds the resulting light vector as a numpy array of three floats.
@@ -28,22 +31,26 @@ class SolarPosition:
     """
     timestamp: datetime
     latitude: float
+    longitude: float
     light_vector: np.array
     zenith: float
     azimuth: float
 
-    def __init__(self, datetime: datetime, latitude: float):
+    def __init__(self, datetime: datetime, latitude: float, longitude: float):
         """
         Constructor for SolarPosition class.
 
         Parameters
         ----------
         datetime: datetime
-            A Python datetime object representing the date and time in UTC. Year is 
-            required but generally does not have much effect on outcomes.
+            A Python datetime object representing the date and time in UTC.
 
         latitude: float
-            Latitide at which to run light model. Must be between -90 and 90.
+            Latitide in degrees at which to run light model. Positive south of equator, negative to south. Must be between -90 and 90.
+
+        longitude: float
+            Longitude in degrees at which to run the light model. Positive south of prime meridian, negative to the west. Must be between -180
+            and 180.
 
         Returns
         --------
@@ -53,10 +60,14 @@ class SolarPosition:
         if latitude > 90. or latitude < -90.:
             raise ValueError("Latitude must be between -90 and 90.")
         
+        if longitude > 180. or longitude < -180.:
+            raise ValueError("Longitude must be between -180 and 180.")
+        
         self.timestamp = datetime
         self.latitude = latitude
+        self.longitude = longitude
 
-        solar_position = pvlib.solarposition.get_solarposition(datetime, latitude=latitude, longitude=0.0)
+        solar_position = pvlib.solarposition.get_solarposition(datetime, latitude=latitude, longitude=longitude)
 
         # Check for sun below horizon
         if solar_position['elevation'].iloc[0] < 0:

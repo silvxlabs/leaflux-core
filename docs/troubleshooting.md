@@ -20,6 +20,7 @@
 
 ## Time zones
 
- - The `SolarPosition` class takes a `datetime` object as input. By default the time is in UTC. Ensure you are correcting for this with the times you are supplying. 
+ - The `SolarPosition` class takes a `datetime` object as input. Time is expected in UTC, **not** local time. This is so that UTC can be used with 
+ longitude to get accurate solar positions.
 
- - You can also supply additional arguments to a `datetime` object to change the timezone. More information on this can be found in the `datetime` documentation: <https://docs.python.org/3/library/datetime.html>
+ - You can also supply additional arguments to a `datetime` object to adjust a local `datetime` into UTC if this is easier for your workflow. More information on this can be found in the `datetime` documentation: <https://docs.python.org/3/library/datetime.html>

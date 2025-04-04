@@ -64,16 +64,17 @@ manipulated to be in relation to 0, but provided values can be absolute. Ensure 
 my_environment = Envronment(my_leaf_area, terrain=my_terrain, sensors=my_sensors)
 ```
 
-**Create solar position with date, time, and latitude**
+**Create solar position with date, time, latitude, and longitude**
 
-The model needs a solar position, which can be created with a date, time, and latitude. The datetime required by the `SolarPosition` constructor is a Python `datetime` object, see <https://docs.python.org/3/library/datetime.html#datetime-objects> for more detail about `datetime` objects.
+The model needs a solar position, which can be created with a date, time, latitude, and longitude. Time **must** be in UTC, **not** local time. This is because longitude is used with UTC to get accurate solar positions. The datetime required by the `SolarPosition` constructor is a Python `datetime` object, see <https://docs.python.org/3/library/datetime.html#datetime-objects> for more detail about `datetime` objects.
 
 ```
 # datetime parameters are year, month, day, hour, minute
-# This example is for April 11th 2024 at 14:00 (2:00PM)
-my_datetime = datetime(2024, 4, 11, 14, 00)
+# This example is for April 11th 2024 at 17:00 (5:00PM) UTC
+my_datetime = datetime(2024, 4, 11, 17, 00)
 my_latitude = 40.
-my_solar_position = SolarPosition(my_datetime, my_latitude)
+my_longitude = -120.
+my_solar_position = SolarPosition(my_datetime, my_latitude, my_longitude)
 ```
 
 **Run the model and access results**

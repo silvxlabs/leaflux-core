@@ -137,7 +137,7 @@ class Sensor:
     """
     sensor: np.array
 
-    def __init__(self, x: int, y: int, z: int, pitch: float = None, azimuth: float = None):
+    def __init__(self, inputs: tuple):
         """
         Constructor for Sensor object. If pitch **and** azimuth are provided, the returned 
         irradiance will be corrected for the tilt of the sensor relative to the SolarPosition 
@@ -146,25 +146,31 @@ class Sensor:
 
         Parameters
         -
-        x: int
+        inputs[0]: int
             x coordinate of sensor. 
 
-        y: int
+        inputs[1]: int
             y coordinate of sensor. Y coordinates are expected to run south to north.
 
-        z: int
+        inputs[2]: int
             z coordinate of sensor.
         
-        pitch: float
+        inputs[3]: float
             Pitch of sensor in radians. Default is None.
         
-        azimuth: float
+        inputs[4]: float
             Azimuth angle of sensor in radians. Default is None.
 
         Returns
         -
         Instance of Sensor class.
         """
+        x = inputs[0]
+        y = inputs[1]
+        z = inputs[2]
+        pitch = inputs[3]
+        azimuth = inputs[4]
+        
         self.sensor = np.array([x, y, z, pitch, azimuth], dtype=np.float32)
 
 class Environment:
@@ -220,11 +226,12 @@ class Environment:
                 raise ValueError(f"Leaf area grid dimensions must match terrain dimensions. Leaf area is ({leaf_area.width}, {leaf_area.height}) and terrain is ({terrain.width}, {terrain.height})")
         
         if sensors != None:
-            # Check types of all sensors
+            # Create Sensor objects from list of tuples
+            sensor_list = []
             for i, sensor in enumerate(sensors):
-                if not isinstance(sensor, Sensor):
-                    raise TypeError(f"Expected a list of objects of type 'Sensor', but got {type(sensor)} at index {i}.")
-            self.sensors = np.vstack([sensor.sensor for sensor in sensors]) # Stack sensors
+                sensor_list.append(Sensor(sensor))
+
+            self.sensors = np.vstack([sensor.sensor for sensor in sensor_list]) # Stack sensors
         else:
             self.sensors = None
 

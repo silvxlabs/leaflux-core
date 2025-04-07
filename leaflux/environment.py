@@ -190,7 +190,7 @@ class Environment:
     terrain: Terrain
     sensors: np.ndarray
 
-    def __init__(self, leaf_area: LeafArea, terrain: Terrain = None, sensors: list[Sensor] = None):
+    def __init__(self, leaf_area: LeafArea, terrain: Terrain = None, sensors = None):
         """
         Constructor for Environment object.
 
@@ -200,8 +200,8 @@ class Environment:
             A LeafArea class object.
         terrain: Terrain
             (optional) A Terrain class object. Default is None.
-        sensors: list[Sensor]
-            (optional) A list of Sensor objects. Default is None.
+        sensors: 
+            (optional) A list of tuples to construct Sensor class object. Default is None.
 
         Returns
         -------

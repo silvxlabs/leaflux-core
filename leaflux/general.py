@@ -24,13 +24,13 @@ def plane_sweep(leaf_area_stack: np.ndarray, x_min: int, x_max: int, y_min: int,
 
         # Cumulative leaf area is current leaf area plus what's already
         # in bucket at this (x, y)
-        cum_leaf_area = leaf_area + area_map[x_rot, y_rot]
+        cum_leaf_area = leaf_area + area_map[int(x_rot), int(y_rot)]
 
         # Set in stack
         leaf_area_stack[i, 4] = cum_leaf_area
 
         # Update hash map
-        area_map[x_rot, y_rot] = cum_leaf_area
+        area_map[int(x_rot), int(y_rot)] = cum_leaf_area
     return leaf_area_stack[:, 4]
 
 # Helper function that calculates a rotation matrix from a given solar vector
@@ -355,10 +355,10 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Ir
     
     return relative_irradiance
 
-def plot_irradiance(irr: Irradiance, terrain_coords: Terrain = None, show_solar_vector: bool = False, show_sensors = False, show_axes: bool = False):
+def plot_irradiance(irr: Irradiance, terrain_coords: Terrain = None, show_solar_vector: bool = False, show_sensors = False, show_axes: bool = False, show_canopy = True):
     """
-    Uses pyvista to plot the irradiance for the canopy and terrain (if available), optionally showing the solar direction vector, sensors (if available), and axes. The optional 
-    parameters can be helpful for debugging.
+    Uses pyvista to plot the irradiance results, optionally showing the solar direction vector, sensors (if available), and axes. The optional 
+    parameters can be helpful for debugging. Canopy can optionally be omitted. 
 
     Parameters
     -
@@ -373,6 +373,8 @@ def plot_irradiance(irr: Irradiance, terrain_coords: Terrain = None, show_solar_
         (optional) Bool indicating whether sensors, if they exist, will be shown. Default is False.
     show_axes: bool
         (optional) Bool indicating whether axes should be drawn. Default is False.
+    show_canopy: bool
+        (optional) Bool indicating whether, when terrain is present, canopy should also be plotted. Can be useful for visualizing terrain by itself. Default is True.
 
     """
     plotter = pv.Plotter()
@@ -389,7 +391,7 @@ def plot_irradiance(irr: Irradiance, terrain_coords: Terrain = None, show_solar_
         terrain = np.column_stack((terrain_stack.terrain[:, 0].ravel(), terrain_stack.terrain[:, 1].ravel(), terrain_coords.terrain[:, 2].ravel(), terrain_stack.terrain[:, 2].ravel()))
 
         # Adding canopy and terrain
-        if irr.canopy_irradiance is not None:
+        if irr.canopy_irradiance is not None and show_canopy:
             all_irr = np.vstack((terrain, irr.canopy_irradiance))
         # Unless there is only terrain
         else:

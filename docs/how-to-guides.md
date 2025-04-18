@@ -116,19 +116,27 @@ sensor_0_result = my_result.sensor_irradiance[0, :] # Entire row
 The `plot_irradiance()` function has been included to make plotting the output of LeafLux easy and flexible. 
 
 `plot_irradiance()` just needs the result of either `attenuate_surface()` or `attenuate_all()`, but there are additional options as well. Terrain 
-coordinates *must* be provided if the result contains terrain irradiance.
+coordinates *must* be provided if the result contains terrain irradiance. These are used to provide z values.
 
-If a `SolarPosition` is provided, an arrow will be drawn in the direction of the solar vector. This can be useful for visualizing how the sun is 
-interacting with your environment. 
+If a `show_solar_vector` is set to True, an arrow will be drawn in the direction of the solar vector. This can be useful for visualizing how the sun is interacting with your environment. 
 
 If sensors are present in the result and `show_sensors` is set to `True`, sensors will be drawn as large red spheres, which can be useful for 
 checking that their coordinates are correct.
 
-If `show_axes` is set to `True`, axes will be drawn, which can be helpful in understanding the output. 
+If `show_axes` is set to `True`, axes will be drawn, which can be helpful in understanding the output.
+
+If `show_canopy` is set to `True`, and terrain results are present, then the canopy will be drawn. This is the default setting. If `show_canopy` is set
+to `False`, the canopy will not be drawn. This can be useful for visualizing the terrain surface by itself. 
 
 The below example plots the entire environment and includes all the optional elements.
 
 ```
-plot_irradiance(my_result, my_terrain, my_solar_position, True, True)
+plot_irradiance(my_result, my_terrain, True, True, True, True)
+```
+
+The below example utilizes all of the default settings except the canopy will not be drawn. 
+
+```
+plot_irradiance(my_result, my_terrain, show_canopy=False)
 ```
 

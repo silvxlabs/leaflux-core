@@ -303,7 +303,7 @@ class Environment:
             self.leaf_angle = None
         else:
             if not isinstance(leaf_angle, LeafAngle):
-                raise TypeError(f"Expected an object of type 'LeafAngle', but got (type(leaf_angle).")
+                raise TypeError(f"Expected an object of type 'LeafAngle', but got {type(leaf_angle)}.")
             
             if not np.array_equal(leaf_area.leaf_area[:, :3], leaf_angle.leaf_angle[:, :3]):
                 raise ValueError(f"Leaf angle point coordinates do not match leaf area point coordinates. Coordinates must match. Leaf area grid shape: {leaf_area.leaf_area.shape} Leaf angle grid shape: {leaf_angle.leaf_angle.shape}")

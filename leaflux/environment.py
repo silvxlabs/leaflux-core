@@ -167,6 +167,82 @@ class Sensor:
         """
         self.sensor = np.array([x, y, z, pitch, azimuth], dtype=np.float32)
 
+class LeafAngle:
+    """
+    Class that holds the formatted leaf angle array, used as input.
+
+    Attributes
+    ----------
+    leaf_angle: np.ndarray
+        Represents a point cloud of canopy mean leaf angle values (radians). A numpy array with shape
+        (N, 4) where each row contains (x, y, z, leaf_angle) and y runs south to north.
+
+    width: int
+        Width of the area being described. Should be the same as any Terrain and LeafArea width being used in 
+        conjunction with this LeafAngle. 
+    
+    height: int
+        Height of the area being described. Should be the same as any Terrain and LeafArea height being used in 
+        conjunction with this LeafAngle.
+    """
+    leaf_angle: np.ndarray
+    width: int
+    height: int
+
+    # Onramp constructors
+    def __init__(self, leaf_angle_point_cloud: np.ndarray, width: int, height: int):
+        """
+        Initializes LeafAngle object from a given point cloud.
+        
+        Parameters
+        ----------
+        leaf_angle_point_cloud: np.ndarray
+            Expected as a sparse numpy array with shape (N, 4) where each row is (x, y, z, leaf angle)
+            and y runs south to north.
+        
+        width: int
+            Width of the area being described. Should be the same as any Terrain width being used in 
+            conjunction with this LeafAngle. 
+        
+        height: int
+            Height of the area being described. Should be the same as any Terrain height being used in 
+            conjunction with this LeafAngle.
+
+        Returns
+        --------
+        Instance of LeafAngle class object.
+        """
+        # From point cloud
+        self.leaf_angle = leaf_angle_point_cloud
+        self.width = width
+        self.height = height
+
+    @classmethod
+    def from_uniformgrid(cls, leaf_angle_uniform_grid: np.ndarray):
+        """
+        Initializes LeafAngle object from a given uniform grid.
+
+        Parameters
+        -----------
+        leaf_angle_uniform_grid: np.ndarray
+            Uniform grid representing leaf angle coordinates and their leaf angle. Assumed to 
+            be dense. Expected as a 3D numpy array where each (y, x, z) coordinate represents
+            a leaf angle value, and where y runs north to south.
+        
+        Returns
+        --------
+        LeafAngle
+            Instance of LeafAngle class. 
+
+        """
+        s_la = sparse.COO(leaf_angle_uniform_grid)
+        # Stacking like (x, y, z, area)
+        # Flipping y coordinates to go south->north
+        leaf_area = np.column_stack((s_la.coords[1], (leaf_angle_uniform_grid.shape[0] - s_la.coords[0] - 1), s_la.coords[2], s_la.data))
+        leaf_area = leaf_area.astype(np.float32)
+
+        return cls(leaf_area, leaf_angle_uniform_grid.shape[1], leaf_angle_uniform_grid.shape[0])
+    
 class Environment:
     """
     Class that holds the leaf area and terrain arrays. 
@@ -182,9 +258,10 @@ class Environment:
     """
     leaf_area: LeafArea
     terrain: Terrain
+    leaf_angle: LeafAngle
     sensors: np.ndarray
 
-    def __init__(self, leaf_area: LeafArea, terrain: Terrain = None, sensors: list[Sensor] = None):
+    def __init__(self, leaf_area: LeafArea, terrain: Terrain = None, leaf_angle: LeafAngle = None, sensors: list[Sensor] = None):
         """
         Constructor for Environment object.
 
@@ -194,6 +271,8 @@ class Environment:
             A LeafArea class object.
         terrain: Terrain
             (optional) A Terrain class object. Default is None.
+        leaf_angle: LeafAngle
+            (optional) A LeafAngle class object. Default is None.
         sensors: list[Sensor]
             (optional) A list of Sensor objects. Default is None.
 
@@ -212,13 +291,29 @@ class Environment:
         else:
             if not isinstance(terrain, Terrain):
                     raise TypeError(f"Expected an object of type 'Terrain', but got {type(terrain)}.")
+            
             # Leaf area dimensions must match terrain dimensions
             if leaf_area.width == terrain.width and leaf_area.height == terrain.height:
                 self.leaf_area = leaf_area
                 self.terrain = terrain
             else:
-                raise ValueError(f"Leaf area grid dimensions must match terrain dimensions. Leaf area is ({leaf_area.width}, {leaf_area.height}) and terrain is ({terrain.width}, {terrain.height})")
+                raise ValueError(f"Terrain dimensions must match leaf area grid dimensions. Leaf area is ({leaf_area.width}, {leaf_area.height}) and terrain is ({terrain.width}, {terrain.height})")
         
+        if leaf_angle is None:
+            self.leaf_angle = None
+        else:
+            if not isinstance(leaf_angle, LeafAngle):
+                raise TypeError(f"Expected an object of type 'LeafAngle', but got (type(leaf_angle).")
+            
+            if not np.array_equal(leaf_area.leaf_area[:, :3], leaf_angle.leaf_angle[:, :3]):
+                raise ValueError(f"Leaf angle point coordinates do not match leaf area point coordinates. Coordinates must match. Leaf area grid shape: {leaf_area.leaf_area.shape} Leaf angle grid shape: {leaf_angle.leaf_angle.shape}")
+            
+            # Dimensions must match leaf_area
+            if leaf_area.width == leaf_angle.width and leaf_area.height == leaf_angle.height:
+                self.leaf_angle = leaf_angle
+            else:
+                raise ValueError(f"Leaf angle dimensions must match leaf area grid dimensions. Leaf area is ({leaf_area.width}, {leaf_area.height}) and leaf angle is ({leaf_angle.width}, {leaf_angle.height})")
+            
         if sensors != None:
             # Check types of all sensors
             for i, sensor in enumerate(sensors):

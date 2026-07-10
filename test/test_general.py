@@ -1,7 +1,7 @@
 import pytest 
 
 from leaflux.dependencies import *
-from leaflux.general import _get_rot_mat, _attenuate_surface_flat, _attenuate_surface_terrain, attenuate_surface, attenuate_all
+from leaflux.general import _get_rot_mat, _attenuate_surface_flat, _attenuate_surface_terrain, attenuate_surface, attenuate_all, _calculate_g_from_mla
 from leaflux.solar import *
 from leaflux.environment import *
 
@@ -9,6 +9,30 @@ from leaflux.environment import *
 # my_datetime = datetime(2024, 6, 15, 20, 00)
 # my_latitude = 40.
 # my_longitude = -120.
+
+# MLA (radians) that gives x = 1.0. Plug 1.0 into Campbell 1990 eq 16
+SPHERICAL_MLA = 9.65 * 4.0**(-1.65)
+
+@pytest.fixture
+def mla_env():
+    # Shared setup matching the env used to generate the stored no-MLA grids (test_attenuate_all)
+    sol = SolarPosition(datetime(2024, 6, 15, 20, 00), 40., -120.)
+
+    terrain_grid = np.load("test/data/terrain_input300.npy")
+    terrain = Terrain(terrain_grid)
+
+    leaf_area = LeafArea.from_uniformgrid(np.load("test/data/leaf_area_grid.npy"))
+    leaf_area.leaf_area[:, 2] += terrain_grid[
+        (leaf_area.height - leaf_area.leaf_area[:, 1] - 1).astype(int),
+        leaf_area.leaf_area[:, 0].astype(int),
+    ]  # z adjust for terrain
+
+    sensors = [
+        Sensor(150, 150, 50, 0, sol.azimuth),
+        Sensor(33, 33, 50),
+        Sensor(44, 44, 55, sol.zenith, sol.azimuth),
+    ]
+    return sol, leaf_area, terrain, sensors
 
 class TestGeneral:
     @pytest.mark.parametrize(
@@ -180,7 +204,6 @@ class TestGeneral:
             np.save("test/data/all_result_sensor.npy", result.sensor_irradiance)
 
             np.save("test/data/all_result_canopy_flat.npy", result_flat.canopy_irradiance)
-            # plot_entire(result.terrain_irradiance, my_terrain.terrain, result.canopy_irradiance, my_solar_position, True)
 
         ASSERT = True
         if ASSERT:
@@ -225,8 +248,8 @@ class TestGeneral:
             print("* FLAT * Expected sum canopy: ", expected_sum_flat_canopy, " Actual sum canopy: ", actual_sum_flat_canopy, " Canopy sum diff: ", expected_sum_flat_canopy-actual_sum_flat_canopy)
 
             # Testing against expected result
-            np.testing.assert_allclose(expected_terr, actual_terr, atol=1e-6)
             np.testing.assert_allclose(expected_canopy, actual_canopy, atol=1e-6)
+            np.testing.assert_allclose(expected_terr, actual_terr, atol=1e-6)
             np.testing.assert_equal(expected_terr, actual_terr)
             np.testing.assert_equal(expected_canopy, actual_canopy)
 
@@ -249,6 +272,85 @@ class TestGeneral:
             expected_sensor = np.load("test/data/all_result_sensor.npy")
             np.testing.assert_allclose(expected_sensor, result.sensor_irradiance, atol=1e-6)
             np.testing.assert_equal(expected_sensor, result.sensor_irradiance)
+
+    def test_calculate_g_from_mla(self):
+        # Unit test against Campbell 1989 Table 1.1 ground truth at zenith 0.29 rad
+        zenith = 0.29
+        mla = np.array([np.radians(35.0), SPHERICAL_MLA, np.radians(75.0), np.nan])  # rad
+        leaf_g = np.full_like(mla, fill_value=0.5, dtype=np.float32)                 # default fill
+
+        _calculate_g_from_mla(mla, leaf_g, zenith)  # mutates leaf_g in place
+
+        assert leaf_g[0] == pytest.approx(0.74065, abs=1e-4)  # planophile 35 deg
+        assert leaf_g[1] == pytest.approx(0.5, abs=1e-6)      # spherical -> 0.5
+        assert leaf_g[2] == pytest.approx(0.27016, abs=1e-4)  # erectophile 75 deg
+        assert leaf_g[3] == 0.5                               # nan left at default
+
+        # Planophile intercepts most, erectophile least, at near-overhead sun
+        assert leaf_g[0] > leaf_g[1] > leaf_g[2]
+
+    def test_mla_changes_result(self, mla_env):
+        # A (non-spherical) MLA grid must diverge from the stored no-MLA result
+        sol, leaf_area, terrain, sensors = mla_env
+
+        mla_grid = leaf_area.leaf_area.copy()
+        mla_grid[:, 3] = np.radians(35.0)  # planophile, rad
+        leaf_angle = LeafAngle(mla_grid, width=300, height=300)
+
+        env = Environment(leaf_area, terrain=terrain, sensors=sensors, leaf_angle=leaf_angle)
+        result = attenuate_all(env, sol)
+
+        no_mla_canopy = np.load("test/data/all_result_canopy_1.npy")
+        no_mla_terr = np.load("test/data/all_result_terr_1.npy")
+
+        assert not np.allclose(result.canopy_irradiance, no_mla_canopy)
+        assert not np.allclose(result.terrain_irradiance, no_mla_terr)
+
+    def test_mla_spherical_matches_default(self, mla_env):
+        # Spherical MLA -> G = 0.5, so it must reproduce the stored no-MLA (default 0.5) result
+        sol, leaf_area, terrain, sensors = mla_env
+
+        mla_grid = leaf_area.leaf_area.copy()
+        mla_grid[:, 3] = SPHERICAL_MLA  # rad
+        leaf_angle = LeafAngle(mla_grid, width=300, height=300)
+
+        env = Environment(leaf_area, terrain=terrain, sensors=sensors, leaf_angle=leaf_angle)
+        result = attenuate_all(env, sol)
+
+        no_mla_canopy = np.load("test/data/all_result_canopy_1.npy")
+        no_mla_terr = np.load("test/data/all_result_terr_1.npy")
+
+        np.testing.assert_allclose(result.canopy_irradiance, no_mla_canopy, atol=1e-6)
+        np.testing.assert_allclose(result.terrain_irradiance, no_mla_terr, atol=1e-6)
+
+    def test_mla_against_stored_result(self, mla_env):
+        sol, leaf_area, terrain, sensors = mla_env
+
+        mla_grid = leaf_area.leaf_area.copy()
+        mla_grid[:, 3] = SPHERICAL_MLA # Using MLA that will give spherical
+        leaf_angle = LeafAngle(mla_grid, width=300, height=300)
+
+        env = Environment(leaf_area, terrain=terrain, sensors=sensors, leaf_angle=leaf_angle)
+        result = attenuate_all(env, sol)
+
+        SAVE_NEW = False
+        if SAVE_NEW:
+            np.save("test/data/mla_spherical_result_terr.npy", result.terrain_irradiance)
+            np.save("test/data/mla_spherical_result_canopy.npy", result.canopy_irradiance)
+            np.save("test/data/mla_spherical_result_sensor.npy", result.sensor_irradiance)
+
+        ASSERT = True
+        if ASSERT:
+            expected_terr = np.load("test/data/mla_spherical_result_terr.npy")
+            expected_canopy = np.load("test/data/mla_spherical_result_canopy.npy")
+
+            actual_terr = result.terrain_irradiance
+            actual_canopy = result.canopy_irradiance
+
+            np.testing.assert_allclose(actual=actual_canopy, desired=expected_canopy, atol=1e-6)
+            np.testing.assert_allclose(actual=actual_terr, desired=expected_terr, atol=1e-6)
+            np.testing.assert_equal(actual=actual_terr, desired=expected_terr)
+            np.testing.assert_equal(actual=actual_canopy, desired=expected_canopy)
 
     @pytest.mark.skip()          
     def test_surface_vs_all(self):

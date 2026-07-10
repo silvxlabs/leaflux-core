@@ -18,21 +18,55 @@ def plane_sweep(lad_stack: np.ndarray, x_min: int, x_max: int, y_min: int, y_max
     # *** Note: In the case no g array was supplied, all g are 1.0, so cumulative_mu is cumulative LAD
 
     # Create hash map with (x, y) for each possible (x, y)
-    mu_map = {(x, y): 0.0 for x in range(x_min, x_max) for y in range(y_min, y_max)}
+    expo_map = {(x, y): 0.0 for x in range(x_min, x_max) for y in range(y_min, y_max)}
 
     # Go through entire leaf area stack
     for i, row in enumerate(lad_stack):
-        x, y, z, lad, g, cumulative_mu, x_rot, y_rot, z_rot = row
-
-        mu = lad * g # mu for this voxel
-        cumulative_mu = mu + mu_map[int(x_rot), int(y_rot)] # Add what's already in this bucket
+        x_rot = row[7]
+        y_rot = row[8]
+        this_cumulative_expo = row[5] + expo_map[int(x_rot), int(y_rot)] # Add what's already in this bucket
 
         # Set in stack
-        lad_stack[i, 5] = cumulative_mu
+        lad_stack[i, 6] = this_cumulative_expo
 
         # Update hash map
-        mu_map[int(x_rot), int(y_rot)] = cumulative_mu
-    return lad_stack[:, 5] # Return cumulative mu
+        expo_map[int(x_rot), int(y_rot)] = this_cumulative_expo
+    return lad_stack[:, 6] # Return cumulative mu
+
+def _calculate_g_from_mla(mla: np.ndarray, leaf_g: np.ndarray, solar_zenith: float) -> None:
+    # If a leaf angle array has been supplied, nans are assumed to be areas where leaf angle is unknown
+    # In this case, G will be set to the default value for the extinction coefficient, which is provided to 
+    # the attenuate_all function 
+    valid_mla = np.isfinite(mla)
+
+    # Calculate G based on mean leaf angle (MLA) and the solar zenith
+    # First, get x from MLA, derived from Eq. 16 from Campbell 1990
+    leaf_x = -3.0 + (mla[valid_mla] / 9.65)**(-1.0/1.65)
+
+    # Calculate A for the G equation
+
+    # The below eq are all from Campbell 1989
+    # They can also be found on pg 176 of Campbell 1990
+    e1 = np.full_like(leaf_x, np.nan)
+    e2 = np.full_like(leaf_x, np.nan)
+    e1mask = leaf_x > 1.0
+    e2mask = leaf_x < 1.0
+    e1[e1mask] = np.sqrt((1.0 - leaf_x[e1mask]**-2.0)) # Epsilon 1 for use of eq 12 where x > 1
+    e2[e2mask] = np.sqrt((1.0 - leaf_x[e2mask]**2.0)) # Epsilon 2 for use of eq 13 where x < 1
+
+    leaf_a = np.full_like(leaf_x, fill_value=2.0) # Fill with 2.0 for the case where x == 1
+    leaf_a[e1mask] = 1.0 + np.log((1.0 + e1[e1mask]) / (1.0 - e1[e1mask])) / (2.0 * e1[e1mask] * leaf_x[e1mask]**2.0) # In the case where x > 1, use eq 12
+    leaf_a[e2mask] = 1.0 + np.arcsin(e2[e2mask]) / (leaf_x[e2mask] * e2[e2mask]) # In the case where x < 1, use eq 13
+
+    # # From Campbell 1990 eq 14, alternate method that approximates to 0.015% for entire range
+    # # * TODO: Check if this is a significant speed improvement
+    # leaf_a = (leaf_x + 1.774*(leaf_x + 1.182)**-0.733) / leaf_x
+
+    # Finally, calculate g using A and the solar zenith angle
+    # From Table 1.1 in Campbell 1989, "Ellipsoidal distribution"
+    leaf_g_valid = (leaf_x**2.0 * np.cos(solar_zenith)**2.0 + np.sin(solar_zenith)**2.0)**0.5 / (leaf_a * leaf_x)
+
+    leaf_g[valid_mla] = leaf_g_valid # Assign valid g values, leaving others as default
 
 # Helper function that calculates a rotation matrix from a given solar vector
 def _get_rot_mat(solar_vector: np.array) -> np.ndarray:
@@ -257,55 +291,45 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Ir
     leaf_g = np.full_like(env.leaf_area.leaf_area[:, 3], fill_value=extn, dtype=np.float32)
 
     if env.leaf_angle != None:
-        mla = env.leaf_angle.leaf_angle[:, 3]
+        mla = (env.leaf_angle.leaf_angle[:, 3]).copy()
+        _calculate_g_from_mla(mla, leaf_g, sol.zenith)
 
-        # If a leaf angle array has been supplied, nans are assumed to be areas where leaf angle is unknown
-        # In this case, G will be set to the default value for the extinction coefficient, which is provided to 
-        # the attenuate_all function 
-        valid_mla = np.isfinite(mla)
-
-        # Calculate G based on mean leaf angle (MLA) and the solar zenith
-        # First, get x from MLA, derived from Eq. 16 from Campbell 1990
-        leaf_x = ((mla[valid_mla] / 9.65)**(1.0 / -1.65)) - 3.0
-
-        # Calculate A for the G equation
-        # The below eq are all from Campbell 1989
-        # They can also be found on pg 176 of Campbell 1990
-        e1 = np.full_like(leaf_x, np.nan)
-        e2 = np.full_like(leaf_x, np.nan)
-        e1mask = leaf_x > 1.0
-        e2mask = leaf_x < 1.0
-        e1[e1mask] = np.sqrt((1.0 - leaf_x[e1mask]**-2.0)) # Epsilon 1 for use of eq 12 where x > 1
-        e2[e2mask] = np.sqrt((1.0 - leaf_x[e2mask]**2.0)) # Epsilon 2 for use of eq 13 where x < 1
-
-        leaf_a = np.full_like(leaf_x, fill_value=2.0) # Fill with 2.0 for the case where x == 1
-        leaf_a[e1mask] = 1.0 + np.log((1.0 + e1[e1mask]) / (1.0 - e1[e1mask])) / (2.0 * e1[e1mask] * leaf_x[e1mask]**2.0) # In the case where x > 1, use eq 12
-        leaf_a[e2mask] = 1.0 + np.arcsin(e2[e2mask]) / (leaf_x[e2mask] * e2) # In the case where x < 1, use eq 13
-
-        # Finally, calculate g using A and the solar zenith angle
-        # From Table 1.1 in Campbell 1989, "Ellipsoidal distribution"
-        leaf_g_valid = (leaf_x**2.0 * np.cos(sol.zenith)**2.0 + np.sin(sol.zenith)**2.0)**0.5 / (leaf_a * leaf_x)
-
-        leaf_g[valid_mla] = leaf_g_valid # Assign valid g values, leaving others as default
-
-    # Will hold ((0)x, (1)y, (2)z, (3)lad, (4)g, (5)cum_lad (init as 0), (6)x_rot, (7)y_rot_, (8)z_rot)
-    leaf_area_stack = np.column_stack((env.leaf_area.leaf_area[:, 0], env.leaf_area.leaf_area[:, 1], env.leaf_area.leaf_area[:, 2], env.leaf_area.leaf_area[:, 3], leaf_g, np.zeros_like(env.leaf_area.leaf_area[:, 0]), leaf_area_stack_rot))
+    leaf_area_stack = np.column_stack((
+            env.leaf_area.leaf_area[:, 0], # [0] x
+            env.leaf_area.leaf_area[:, 1], # [1] y
+            env.leaf_area.leaf_area[:, 2], # [2] z
+            env.leaf_area.leaf_area[:, 3], # [3] LAD
+            leaf_g, # [4] G
+            (env.leaf_area.leaf_area[:, 3] * leaf_g), # [5] exponent (LAD * G)
+            np.zeros_like(env.leaf_area.leaf_area[:, 0]), # [6] cumulative expo (init as 0s)
+            leaf_area_stack_rot # [7, 8, 9] Rotated x, y, z
+        ))
 
     # Make terrain area array that will hold giant leaf area values
     if env.terrain != None:
         terrain_leaf_area = np.full_like(env.terrain.terrain[:, 0].flatten(), 2000.0, dtype=np.float32) # Make leaf area very high
         terrain_area_rot_stack = (r @ env.terrain.terrain[:, :3].T).T
 
-        # Will hold (0)x, (1)y, (2)z, (3)terrain LAD, (4)1.0 filled g placeholder, (5)1.0 fill cum leaf area placeholder, (6)x_rot, (7)y_rot, (8)z_rot
         # Structure and order must match LAD stack
-        terrain_area_stack = np.column_stack((env.terrain.terrain[:, 0].flatten(), env.terrain.terrain[:, 1].flatten(), env.terrain.terrain[:, 2].flatten(), terrain_leaf_area, np.ones_like(env.terrain.terrain[:, 0].flatten(), dtype=np.float32), np.ones_like(env.terrain.terrain[:, 0].flatten(), dtype=np.float32), terrain_area_rot_stack))
+        terrain_area_stack = np.column_stack((
+            env.terrain.terrain[:, 0].flatten(), # [0] x
+            env.terrain.terrain[:, 1].flatten(), # [1] y
+            env.terrain.terrain[:, 2].flatten(), # [2] z
+            terrain_leaf_area, # [3] LAD
+            np.zeros_like(env.terrain.terrain[:, 0].flatten(), dtype=np.float32), # [4] G (unused, 0.0 fill)
+            terrain_leaf_area, # [5] Represents exponent, really is filled with 2000.0 to attenuate all light
+            np.zeros_like(env.terrain.terrain[:, 0].flatten(), dtype=np.float32), # [6] cumulative expo (filled with 0.0s)
+            terrain_area_rot_stack # [7, 8, 9] rotated x, y, z
+        ))
         terrain_area_stack = terrain_area_stack.astype(np.float32)
 
         # Make dummy terrain area stack that will have projected leaf area on it
         dummy_terrain_area_stack = np.copy(terrain_area_stack)
-        dummy_terrain_area_stack[:, 3] = 0.0 # No leaf area this time
+        dummy_terrain_area_stack[:, 3] = 0.0 # No exponent this time (equivalent to no leaf area)
 
-        terrain_area_stack[:, 8] -= 1 # Shift down 1m in z, this one should be underneath the dummy stack so that this will hold attenuated values
+        dummy_terrain_area_stack[:, 5] = 0.0 # No exponent this time (equivalent to no leaf area)
+
+        terrain_area_stack[:, 9] -= 1 # Shift down 1m in z, this one should be underneath the dummy stack so that this will hold attenuated values
         leaf_terrain_dummy_stack = np.vstack((leaf_area_stack, terrain_area_stack, dummy_terrain_area_stack)) # Stack LAD, terrain, and dummy terrain 
     else:
         # No terrain provided
@@ -314,31 +338,39 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Ir
     if env.sensors is not None:
         # Rotate
         sensor_rot = (r @ env.sensors[:, :3].T).T
-        # (x, y, z, leaf_area = 0.0, g = 0.0, cum_leaf_area = 0.0, x_rot, y_rot, z_rot)
-        sensor_stack = np.column_stack((env.sensors[:, 0].flatten(), env.sensors[:, 1].flatten(), env.sensors[:, 2].flatten(), np.zeros_like(env.sensors[:, 0]), np.zeros_like(env.sensors[:, 0]), np.zeros_like(env.sensors[:, 0]), sensor_rot))
+        sensor_stack = np.column_stack((
+            env.sensors[:, 0].flatten(), # [0] x
+            env.sensors[:, 1].flatten(), # [1] y
+            env.sensors[:, 2].flatten(), # [2] z
+            np.zeros_like(env.sensors[:, 0]), # [3] LAD
+            np.zeros_like(env.sensors[:, 0]), # [4] G
+            np.zeros_like(env.sensors[:, 0]), # [5] expo
+            np.zeros_like(env.sensors[:, 0]), # [6] cumulative expo
+            sensor_rot # [7, 8, 9] rotated x, y, z
+        ))
 
         # Add to leaf terrain dummy stack
         leaf_terrain_dummy_stack = np.vstack((leaf_terrain_dummy_stack, sensor_stack))
 
     # Floor x and y values to "bucket"
-    leaf_terrain_dummy_stack[:, 6], x_rem = np.divmod(leaf_terrain_dummy_stack[:, 6], 1)
-    leaf_terrain_dummy_stack[:, 7], y_rem = np.divmod(leaf_terrain_dummy_stack[:, 7], 1)
+    leaf_terrain_dummy_stack[:, 7], x_rem = np.divmod(leaf_terrain_dummy_stack[:, 7], 1)
+    leaf_terrain_dummy_stack[:, 8], y_rem = np.divmod(leaf_terrain_dummy_stack[:, 8], 1)
 
     # Sort by z in descending order
-    leaf_terrain_dummy_stack = leaf_terrain_dummy_stack[leaf_terrain_dummy_stack[:, 8].argsort()[::-1]]
+    leaf_terrain_dummy_stack = leaf_terrain_dummy_stack[leaf_terrain_dummy_stack[:, 9].argsort()[::-1]]
 
     # Find max rotated x and y values, use to create  hash map
-    x_max = np.max(leaf_terrain_dummy_stack[:, 6]).astype(int) + 1
-    y_max = np.max(leaf_terrain_dummy_stack[:, 7]).astype(int) + 1
+    x_max = np.max(leaf_terrain_dummy_stack[:, 7]).astype(int) + 1
+    y_max = np.max(leaf_terrain_dummy_stack[:, 8]).astype(int) + 1
 
-    x_min = np.min(leaf_terrain_dummy_stack[:, 6]).astype(int)
-    y_min = np.min(leaf_terrain_dummy_stack[:, 7]).astype(int)
+    x_min = np.min(leaf_terrain_dummy_stack[:, 7]).astype(int)
+    y_min = np.min(leaf_terrain_dummy_stack[:, 8]).astype(int)
 
-    leaf_terrain_dummy_stack[:, 5] = plane_sweep(leaf_terrain_dummy_stack, x_min, x_max, y_min, y_max)
+    leaf_terrain_dummy_stack[:, 6] = plane_sweep(leaf_terrain_dummy_stack, x_min, x_max, y_min, y_max)
 
     # Calculate relative irradiance
     # No multiplication by extn needed because this column is already cumulative mu, which is (G * LAD)
-    leaf_terrain_dummy_stack[:, 5] = np.exp(-leaf_terrain_dummy_stack[:, 5])
+    leaf_terrain_dummy_stack[:, 6] = np.exp(-leaf_terrain_dummy_stack[:, 6])
 
     if(env.sensors is not None):
         # Mask out values that are the sensors
@@ -352,16 +384,16 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Ir
         # Applying tilt correction to the sensors that provided pitch and azimuth
         env.sensors = env.sensors[env.sensors[:, 2].argsort()[::-1]] # Sort so consistent w sorted sensors from ll
         nan_mask = ~np.isnan(env.sensors[:, 3]) & ~np.isnan(env.sensors[:, 4]) # Mask for sensors with provided values
-        sensors[nan_mask, 4] *= sensor_correction(sol.azimuth, sol.zenith, env.sensors[nan_mask, 3], env.sensors[nan_mask, 4])
+        sensors[nan_mask, 6] *= sensor_correction(sol.azimuth, sol.zenith, env.sensors[nan_mask, 3], env.sensors[nan_mask, 4])
 
-        sensor_irr_stack = np.column_stack((sensors[:, :3], sensors[:, 4]))
+        sensor_irr_stack = np.column_stack((sensors[:, :3], sensors[:, 6]))
         sensor_irr_stack = sensor_irr_stack.astype(np.float32)
 
         # Remove from leaf_terrain_dummy_stack
         leaf_terrain_dummy_stack = leaf_terrain_dummy_stack[~(sensor_mask_0 & sensor_mask_1)]
 
     if env.terrain == None:
-        canopy_result_stack = np.column_stack((leaf_terrain_dummy_stack[:, :3], leaf_terrain_dummy_stack[:, 5]))
+        canopy_result_stack = np.column_stack((leaf_terrain_dummy_stack[:, :3], leaf_terrain_dummy_stack[:, 6]))
         relative_irradiance = Irradiance(solar_position=sol, canopy_irradiance=canopy_result_stack)
 
     else:
@@ -381,13 +413,18 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5) -> Ir
         # Isolate terrain surface irradiance
         surface_mask = leaf_terrain_dummy_stack[:, 3] == 0.0
         surface = leaf_terrain_dummy_stack[surface_mask, :]
-        surface[:, 5] *= irr_scale[(env.terrain.height - surface[:, 1] - 1).astype(int), surface[:, 0].astype(int)] # Apply tilt correction
+        surface[:, 6] *= irr_scale[(env.terrain.height - surface[:, 1] - 1).astype(int), surface[:, 0].astype(int)] # Apply tilt correction
         surface_result_grid = np.zeros((env.leaf_area.height, env.leaf_area.width), dtype=np.float32)
-        surface_result_grid[(env.leaf_area.height - np.round(surface[:, 1]) - 1).astype(int), np.round(surface[:, 0]).astype(int)] = surface[:, 5]
+        surface_result_grid[(env.leaf_area.height - np.round(surface[:, 1]) - 1).astype(int), np.round(surface[:, 0]).astype(int)] = surface[:, 6]
 
         # Isolate canopy irradiance
         canopy_mask = (leaf_terrain_dummy_stack[:, 3] != 2000.0) & (leaf_terrain_dummy_stack[:, 3] != 0.0)
-        canopy_result_stack = np.column_stack((leaf_terrain_dummy_stack[canopy_mask, 0], leaf_terrain_dummy_stack[canopy_mask, 1], leaf_terrain_dummy_stack[canopy_mask, 2], leaf_terrain_dummy_stack[canopy_mask, 5]))
+        canopy_result_stack = np.column_stack((
+            leaf_terrain_dummy_stack[canopy_mask, 0], # x (all coords are original)
+            leaf_terrain_dummy_stack[canopy_mask, 1], # y
+            leaf_terrain_dummy_stack[canopy_mask, 2], # z
+            leaf_terrain_dummy_stack[canopy_mask, 6] # Relative irradiance
+        ))
         canopy_result_stack = canopy_result_stack.astype(np.float32)
 
         relative_irradiance = Irradiance(solar_position=sol, terrain_irradiance=surface_result_grid, canopy_irradiance=canopy_result_stack)

@@ -111,7 +111,7 @@ class TestIrradiance:
             ri_no_terrain_og = Irradiance(solar_position=my_solar_position, canopy_irradiance=leaf_irr)
             ri_no_terrain_unmod = Irradiance(solar_position=my_solar_position, canopy_irradiance=leaf_irr)
             ri_no_terrain = ri_no_terrain_og.to_par(800, 200)
-            print(ri_no_terrain.canopy_irradiance)
+            # print(ri_no_terrain.canopy_irradiance)
 
             # Make sure that ri_mod was not modified when running to_par on it
             assert ri_no_terrain.terrain_irradiance is None 

@@ -1,4 +1,4 @@
-from .environment import Environment, LeafArea, Terrain, Sensor
+from .environment import Environment, LeafArea, LeafAngle, Terrain, Sensor
 from .irradiance import Irradiance
 from .solar import SolarPosition
 

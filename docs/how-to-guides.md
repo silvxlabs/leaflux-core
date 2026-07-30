@@ -20,7 +20,30 @@ north to south. Width and height are inferred from grid shape.
 ```
 my_leaf_area = LeafArea.from_uniform_grid(np.load("path/to/my/uniformgrid.npy"))
 ```
-    
+
+**Load a mean leaf angle grid (optional)**
+
+Loading this grid has the same options as the leaf area grid, and if you are supplying a mean leaf angle grid, 
+its coordinates and dimensions must match those of your leaf area grid exactly.
+
+Mean leaf angle is expected in radians.
+
+If provided, mean leaf angle is used to calcualte G per voxel using the spherical distribution formulas found in
+[Campbell 1989](https://doi.org/10.1017/CBO9780511752308.002) and [Campbell 1990](https://doi.org/10.1016/0168-1923(90)90030-A).
+
+
+Sparse:
+
+```
+my_leaf_angle = LeafAngle(np.load("path/to/my/leafarea.npy"), my_leaf_angle_width, my_leaf_angle_height)
+```
+
+
+Uniform grid:
+
+```
+my_leaf_angle = LeafAngle.from_uniform_grid(np.load("path/to/my/uniformgrid.npy"))
+```
 **Load a terrain grid (optional)**
 
 The default constructor will load from a 2.5D uniform grid where the value
@@ -54,14 +77,19 @@ You must ensure that the coordinates of your sensors are located within the doma
 
 **Create environment**
 
-Create the environment with the `LeafArea` and `Terrain` objects you have made. You can also create an environment without a `Terrain` object.
+Create the environment with the objects you have made. `LeafArea` is the only required argument. 
 
 The `Terrain` and `LeafArea` objects that make up your `Environment` should have z values relative to eachother-- in the surface algorithms z values are 
 manipulated to be in relation to 0, but provided values can be absolute. Ensure this is the case before creating your `Environment`. Plotting your 
 `LeafArea` and `Terrain` can be helpful, as can checking minimum z values.
 
+Again, `LeafAngle` coordiantes (if you are providing a leaf angle grid) and dimensions must match those of your `LeafArea` exactly.
+
+Voxel dimensions can be optionally specified. If dimensions are not specified, a voxel shape of 1mx1mx1m is assumed. Dimensions 
+should be supplied as a tuple of floats describing voxel dimensions in (x, y, z). It is up to you to ensure these dimensions are compatible with your input grids. 
+
 ```
-my_environment = Envronment(my_leaf_area, terrain=my_terrain, sensors=my_sensors)
+my_environment = Envronment(my_leaf_area, terrain=my_terrain, leaf_angle=my_leaf_angle, voxel_dim=(1.0, 1.0, 1.0), sensors=my_sensors)
 ```
 
 **Create solar position with date, time, latitude, and longitude**

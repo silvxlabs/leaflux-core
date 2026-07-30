@@ -12,6 +12,8 @@ compatible with standard numpy data types.
 
 [PyPi package](https://pypi.org/project/leaflux/)
 
+[GitHub](https://github.com/silvxlabs/leaflux-core)
+
 ## Installation
 
 Leaflux can be installed using pip:

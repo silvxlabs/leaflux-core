@@ -253,15 +253,31 @@ class Environment:
         Object that holds the coordinates and leaf area for the canopy.
     terrain: Terrain
         Object that holds the coordinates of the terrain.
+    leaf_angle: LeafAngle
+        Object that holds the coordinates and mean leaf angles for the canopy.
+    voxel_dim: tuple[float, float, float]
+        Tuple that holds voxel dimensions like (x, y, z). Should be in the same dimensions used in your leaf_area, terrain, and leaf_angle grids.
+        LeafLux will not do any grid resampling, the user should ensure that all elements of their environment are compatible. 
+        If voxel_dim is not specified, than a path length of 1.0 will be used. Note that this is different 
+        than supplying voxel dimenions of (1, 1, 1). Not specifying voxel dimension will eliminate the calculation of path 
+        length, which increases performance but may impact accuracy. 
     sensors: np.ndarray
         A column stack of Sensors present in the environment. Each row of the array is like (x, y, z, pitch, azimuth)
     """
     leaf_area: LeafArea
     terrain: Terrain
     leaf_angle: LeafAngle
+    voxel_dim: tuple[float, float, float]
     sensors: np.ndarray
 
-    def __init__(self, leaf_area: LeafArea, terrain: Terrain = None, leaf_angle: LeafAngle = None, sensors: list[Sensor] = None):
+    def __init__(
+            self,
+            leaf_area: LeafArea,
+            terrain: Terrain = None,
+            leaf_angle: LeafAngle = None,
+            voxel_dim: tuple[float, float, float] = None,
+            sensors: list[Sensor] = None
+        ):
         """
         Constructor for Environment object.
 
@@ -273,6 +289,8 @@ class Environment:
             (optional) A Terrain class object. Default is None.
         leaf_angle: LeafAngle
             (optional) A LeafAngle class object. Default is None.
+        voxel_dim: tuple[float, float, float]
+            (optional) A tuple describing voxel dimensions in (x, y, z). Default is None. 
         sensors: list[Sensor]
             (optional) A list of Sensor objects. Default is None.
 
@@ -323,3 +341,12 @@ class Environment:
         else:
             self.sensors = None
 
+        if voxel_dim is not None:
+            if (not isinstance(voxel_dim, tuple)
+                    or len(voxel_dim) != 3
+                    or not all(isinstance(v, float) for v in voxel_dim)
+                    or not all(v >= 0.0 for v in voxel_dim)):
+                raise TypeError(f"Expected voxel dimensions as a tuple of 3 positive floats, but got {voxel_dim!r}.")
+            self.voxel_dim = voxel_dim
+        else:
+            self.voxel_dim = None

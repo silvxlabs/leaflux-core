@@ -1,8 +1,0 @@
-numpy
-datetime
-pvlib
-scipy
-sparse
-numba
-pyvista
-pytest

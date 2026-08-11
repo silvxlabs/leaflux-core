@@ -12,25 +12,18 @@ nav:
   - Reference: reference.md
 
 plugins:
-  - mkdocstrings
-
-# markdown_extensions:
-#   - admonition
-#   - codehilite
-#   - toc:
-#       permalink: true
-
-plugins:
   - mkdocstrings:
       handlers:
         python:
+          paths: [.]
           options:
             docstring_style: numpy
             docstring_section_style: table
-            ignore_init_summary: true
             show_root_heading: true
             show_source: false
             members_order: source
             annotations_path: brief
             separate_signature: true
             show_signature_annotations: true
+            docstring_options:
+              ignore_init_summary: true

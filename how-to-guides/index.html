@@ -1,0 +1,548 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../troubleshooting/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>How To Guides - LeafLux Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#how-to-use-leaflux-to-generate-a-irradiance-array" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="LeafLux Documentation" class="md-header__button md-logo" aria-label="LeafLux Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LeafLux Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              How To Guides
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="LeafLux Documentation" class="md-nav__button md-logo" aria-label="LeafLux Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LeafLux Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How To Guides
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How To Guides
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-use-leaflux-to-generate-a-irradiance-array" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to use LeafLux to generate a irradiance array
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-plot-leaflux-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to plot LeafLux results
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-use-leaflux-to-generate-a-irradiance-array" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to use LeafLux to generate a irradiance array
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-plot-leaflux-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to plot LeafLux results
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+  <h1>How To Guides</h1>
+
+<h2 id="how-to-use-leaflux-to-generate-a-irradiance-array">How to use LeafLux to generate a irradiance array</h2>
+<p><strong>Load a leaf area grid</strong></p>
+<p>To load from an existing sparse numpy ND Array with shape (N, 4), you can 
+use the default constructor. You must also provide the width and height of the
+area the leaf area is describing. This should be the same width and height as the
+<code>Terrain</code> if you are providing one. y coordinates are expected to run south to north.</p>
+<pre><code>my_leaf_area = LeafArea(np.load(&quot;path/to/my/leafarea.npy&quot;), my_leaf_area_width, my_leaf_area_height)
+</code></pre>
+<p>If you are loading from a dense uniform grid, load using the <code>from_uniformgrid</code> constructor. This grid 
+is expected to have shape (y, x, z) where each coordinate maps to a leaf area value. y coordinates are expected to run 
+north to south. Width and height are inferred from grid shape.</p>
+<pre><code>my_leaf_area = LeafArea.from_uniform_grid(np.load(&quot;path/to/my/uniformgrid.npy&quot;))
+</code></pre>
+<p><strong>Load a mean leaf angle grid (optional)</strong></p>
+<p>Loading this grid has the same options as the leaf area grid, and if you are supplying a mean leaf angle grid, 
+its coordinates and dimensions must match those of your leaf area grid exactly.</p>
+<p>Mean leaf angle is expected in radians.</p>
+<p>If provided, mean leaf angle is used to calcualte G per voxel using the spherical distribution formulas found in
+<a href="https://doi.org/10.1017/CBO9780511752308.002">Campbell 1989</a> and <a href="https://doi.org/10.1016/0168-1923(90)90030-A">Campbell 1990</a>.</p>
+<p>Sparse:</p>
+<pre><code>my_leaf_angle = LeafAngle(np.load(&quot;path/to/my/leafarea.npy&quot;), my_leaf_angle_width, my_leaf_angle_height)
+</code></pre>
+<p>Uniform grid:</p>
+<pre><code>my_leaf_angle = LeafAngle.from_uniform_grid(np.load(&quot;path/to/my/uniformgrid.npy&quot;))
+</code></pre>
+<p><strong>Load a terrain grid (optional)</strong></p>
+<p>The default constructor will load from a 2.5D uniform grid where the value
+at (y, x) is z. y coordinates are expected to run north to south.</p>
+<pre><code>my_terrain = Terrain(np.load(&quot;path/to/my/terrain.npy&quot;))
+</code></pre>
+<p><strong>Add sensors (optional)</strong></p>
+<p>You can create and add sensors to your environment to generate irradiance results at specific points, which can be useful 
+for testing and validation.</p>
+<p>(x, y, z) coordinates for sensors are expected to have y coordinates running south to north. </p>
+<p>If you provide a pitch and azimuth for a sensor, the returned irradiance will be corrected for the tilt of the sensor. If either
+pitch or azimuth are omitted, returned irradiance will not be corrected. Pitch and azimuth are expected in radians.</p>
+<p>Sensors must be provided as a list of sensors. Create a list of sensors like this:</p>
+<pre><code>my_sensor_0 = Sensor(300, 150, 20) # No pitch or azimuth
+my_sensor_1 = Sensor(200, 100, 15, 1.2, 2.2) # Providing pitch and azimuth
+my_sensor_2 = Sensor(333, 333, 33, 1.0, 2.5) # Prividing pitch and azimuth
+my_sensors = list[Sensor]
+my_sensors = [my_sensor_0, my_sensor_1, my_sensor_2]
+</code></pre>
+<p>You must ensure that the coordinates of your sensors are located within the domain of your environment.</p>
+<p><strong>Create environment</strong></p>
+<p>Create the environment with the objects you have made. <code>LeafArea</code> is the only required argument. </p>
+<p>The <code>Terrain</code> and <code>LeafArea</code> objects that make up your <code>Environment</code> should have z values relative to eachother-- in the surface algorithms z values are 
+manipulated to be in relation to 0, but provided values can be absolute. Ensure this is the case before creating your <code>Environment</code>. Plotting your 
+<code>LeafArea</code> and <code>Terrain</code> can be helpful, as can checking minimum z values.</p>
+<p>Again, <code>LeafAngle</code> coordiantes (if you are providing a leaf angle grid) and dimensions must match those of your <code>LeafArea</code> exactly.</p>
+<p>Voxel dimensions can be optionally specified. If dimensions are not specified, a voxel shape of 1mx1mx1m is assumed. Dimensions 
+should be supplied as a tuple of floats describing voxel dimensions in (x, y, z). It is up to you to ensure these dimensions are compatible with your input grids. </p>
+<pre><code>my_environment = Envronment(my_leaf_area, terrain=my_terrain, leaf_angle=my_leaf_angle, voxel_dim=(1.0, 1.0, 1.0), sensors=my_sensors)
+</code></pre>
+<p><strong>Create solar position with date, time, latitude, and longitude</strong></p>
+<p>The model needs a solar position, which can be created with a date, time, latitude, and longitude. Time <strong>must</strong> be in UTC, <strong>not</strong> local time. This is because longitude is used with UTC to get accurate solar positions. The datetime required by the <code>SolarPosition</code> constructor is a Python <code>datetime</code> object, see <a href="https://docs.python.org/3/library/datetime.html#datetime-objects">https://docs.python.org/3/library/datetime.html#datetime-objects</a> for more detail about <code>datetime</code> objects.</p>
+<pre><code># datetime parameters are year, month, day, hour, minute
+# This example is for April 11th 2024 at 17:00 (5:00PM) UTC
+my_datetime = datetime(2024, 4, 11, 17, 00)
+my_latitude = 40.
+my_longitude = -120.
+my_solar_position = SolarPosition(my_datetime, my_latitude, my_longitude)
+</code></pre>
+<p><strong>Run the model and access results</strong></p>
+<p><code>attenuate_surface()</code> returns irradiance on the surface. <code>attenuate_surface()</code> will provide a valid output whether you provide a terrain or not. It returns an object of type <code>RelativeIrradiance</code>, which contains separate numpy ND Arrays for the terrain and (if applicable) canopy irradiance. If not applicable, canopy irradiance will be <code>None</code>. </p>
+<pre><code>my_result = attenuate_surface(my_environment, my_solar_position)
+my_terrain_irradiance = my_result.terrain_irradiance
+</code></pre>
+<p><code>attenuate_all()</code> returns irradiance on the surface and in the canopy. If no terrain is provided, <strong>only</strong> canopy irradiance is returned. If terrain is
+provided, results for the canopy and surface are returned. </p>
+<pre><code>my_result = attenuate_all(my_environment, my_solar_position)
+my_terrain_irradiance = my_result.terrain_irradiance
+my_canopy_irradiance = my_result.canopy_irradiance
+</code></pre>
+<p>Sensor results can be obtained with the <code>get_sensor_irradiance()</code> function. Sensor results are only generated from <code>attenuate_all()</code>.</p>
+<pre><code>sensor_0_irradiance = my_result.get_sensor_irradiance(my_sensor_0)
+</code></pre>
+<p>Sensor results can also be accessed directly via the <code>sensor_irradiance</code> attribute of the <code>RelativeIrradiance</code> class. <code>sensor_irradiance</code> is an 
+(N, 4) numpy array where each row is (x, y, z, irradiance). The order of the returned sensors is not guarenteed to be the same as the order
+provided. This is how you could access information about the first returned sensor:</p>
+<pre><code>sensor_0_irradiance = my_result.sensor_irradiance[0, 4] # Irradiance
+sensor_0_coordinates = my_result.sensor_irradiance[0, :3] # Coordinates
+sensor_0_result = my_result.sensor_irradiance[0, :] # Entire row
+</code></pre>
+<h2 id="how-to-plot-leaflux-results">How to plot LeafLux results</h2>
+<p>The <code>plot_irradiance()</code> function has been included to make plotting the output of LeafLux easy and flexible. </p>
+<p><code>plot_irradiance()</code> just needs the result of either <code>attenuate_surface()</code> or <code>attenuate_all()</code>, but there are additional options as well. Terrain 
+coordinates <em>must</em> be provided if the result contains terrain irradiance. These are used to provide z values.</p>
+<p>If a <code>show_solar_vector</code> is set to True, an arrow will be drawn in the direction of the solar vector. This can be useful for visualizing how the sun is interacting with your environment. </p>
+<p>If sensors are present in the result and <code>show_sensors</code> is set to <code>True</code>, sensors will be drawn as large red spheres, which can be useful for 
+checking that their coordinates are correct.</p>
+<p>If <code>show_axes</code> is set to <code>True</code>, axes will be drawn, which can be helpful in understanding the output.</p>
+<p>If <code>show_canopy</code> is set to <code>True</code>, and terrain results are present, then the canopy will be drawn. This is the default setting. If <code>show_canopy</code> is set
+to <code>False</code>, the canopy will not be drawn. This can be useful for visualizing the terrain surface by itself. </p>
+<p>The below example plots the entire environment and includes all the optional elements.</p>
+<pre><code>plot_irradiance(my_result, my_terrain, True, True, True, True)
+</code></pre>
+<p>The below example utilizes all of the default settings except the canopy will not be drawn. </p>
+<pre><code>plot_irradiance(my_result, my_terrain, show_canopy=False)
+</code></pre>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

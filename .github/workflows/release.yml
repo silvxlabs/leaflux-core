@@ -14,16 +14,16 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
-        python-version: '3.x'
+        python-version: '3.12'
         cache: pip
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install build twine
+        pip install build twine --skip-existing dist/*
     - name: Build package
       run: python -m build
     - name: Upload to Test PyPi
@@ -37,20 +37,22 @@ jobs:
     needs: upload-to-test-pypi
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
         python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install package from Test PyPi
         run: |
           python -m pip install --upgrade pip
-          pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple "leaflux[test]"
+          pip install pytest
+          pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple leaflux
       - name: Run pytest
         env:
           TEST_ENV: test_pypi
@@ -63,16 +65,16 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
-        python-version: '3.x'
+        python-version: '3.12'
         cache: pip
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install build twine
+        pip install build twine --skip-existing dist/*
     - name: Build and publish
       env:
         TWINE_USERNAME: __token__
@@ -85,20 +87,22 @@ jobs:
     needs: upload-to-pypi
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
         python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install package from PyPi
         run: |
           python -m pip install --upgrade pip
-          pip install "leaflux[test]"
+          pip install pytest
+          pip install leaflux
       - name: Run pytest
         env:
           TEST_ENV: pypi

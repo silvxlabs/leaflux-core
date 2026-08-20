@@ -494,6 +494,76 @@ class TestGeneral:
         np.testing.assert_equal(actual=voxel_terrain_result, desired=no_voxel_terrain_result)
         np.testing.assert_equal(actual=voxel_canopy_result, desired=no_voxel_canopy_result) 
 
+    def test_origin_default_matches_no_arg(self):
+        # origin=(0, 0) must reproduce the no-arg result exactly, across canopy,
+        # terrain, and sensors (the offset is threaded through all three rotation
+        # inputs but a zero offset must be a no-op).
+        def build_env(sol):
+            terrain_grid = np.load("test/data/terrain_input300.npy")
+            terrain = Terrain(terrain_grid)
+            leaf_area = LeafArea.from_uniformgrid(np.load("test/data/leaf_area_grid.npy"))
+            leaf_area.leaf_area[:, 2] += terrain_grid[
+                (leaf_area.height - leaf_area.leaf_area[:, 1] - 1).astype(int),
+                leaf_area.leaf_area[:, 0].astype(int),
+            ]
+            sensors = [
+                Sensor(150, 150, 50, 0, sol.azimuth),
+                Sensor(33, 33, 50),
+                Sensor(44, 44, 55, sol.zenith, sol.azimuth),
+            ]
+            return Environment(leaf_area, terrain=terrain, sensors=sensors)
+
+        sol = SolarPosition(datetime(2024, 6, 15, 20, 00), 40., -120.)
+        base = attenuate_all(build_env(sol), sol)  # attenuate_all mutates env.sensors
+        zeroed = attenuate_all(build_env(sol), sol, origin=(0.0, 0.0))
+
+        np.testing.assert_array_equal(base.canopy_irradiance, zeroed.canopy_irradiance)
+        np.testing.assert_array_equal(base.terrain_irradiance, zeroed.terrain_irradiance)
+        np.testing.assert_array_equal(base.sensor_irradiance, zeroed.sensor_irradiance)
+
+    def test_origin_makes_canopy_translation_invariant(self):
+        # The shadow bucketing floors rotated coordinates onto a 1x1 lattice, so
+        # it is phase-sensitive to where the coordinates start. `origin` anchors
+        # that lattice to a shared global frame: the SAME physical canopy,
+        # expressed at a shifted origin, must give the SAME irradiance when
+        # `origin` cancels the shift. This is what lets a tile reproduce a
+        # whole-domain run.
+        sol = SolarPosition(datetime(2024, 6, 15, 20, 00), 40., -120.)
+        rng = np.random.default_rng(0)
+        W = H = Zn = 30
+        grid = np.zeros((H, W, Zn), dtype=np.float32)
+        grid[5:25, 5:25, 10:20] = rng.uniform(0.1, 0.6, (20, 20, 10)).astype(np.float32)
+        pc = LeafArea.from_uniformgrid(grid).leaf_area  # unique (x, y, z) per point
+
+        def run(coords, origin):
+            env = Environment(LeafArea(coords.copy(), W, H), voxel_dim=(1.0, 1.0, 1.0))
+            return attenuate_all(env, sol, origin=origin).canopy_irradiance
+
+        def sorted_rows(stack):
+            return stack[np.lexsort(stack[:, :3].T)]
+
+        s = 7  # integer horizontal shift into a "global" frame
+        shifted = pc.copy()
+        shifted[:, 0] += s
+        shifted[:, 1] += s
+
+        ref = sorted_rows(run(pc, (0.0, 0.0)))
+
+        # Re-anchored: origin cancels the shift, so the tile matches exactly.
+        matched = run(shifted, (-float(s), -float(s)))
+        matched[:, 0] -= s
+        matched[:, 1] -= s
+        np.testing.assert_array_equal(sorted_rows(matched), ref)
+
+        # Guard against a vacuous pass: without re-anchoring, the same integer
+        # shift genuinely perturbs the bucketing (coords still align, irr does not).
+        mismatched = run(shifted, (0.0, 0.0))
+        mismatched[:, 0] -= s
+        mismatched[:, 1] -= s
+        mismatched = sorted_rows(mismatched)
+        np.testing.assert_array_equal(mismatched[:, :3], ref[:, :3])
+        assert not np.allclose(mismatched[:, 3], ref[:, 3])
+
     def test_path_length_calculator_1m_down(self, test_env):
         # Test that path length through a 1m^3 voxel with a straight
         # down solar vector is 1.0

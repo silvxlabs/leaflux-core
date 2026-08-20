@@ -494,6 +494,45 @@ class TestGeneral:
         np.testing.assert_equal(actual=voxel_terrain_result, desired=no_voxel_terrain_result)
         np.testing.assert_equal(actual=voxel_canopy_result, desired=no_voxel_canopy_result) 
 
+    def test_voxel_dim_sets_shadow_geometry(self):
+        # A single elevated occluder casts a shadow onto the ground. With a 45-deg
+        # sun in the x-z plane, the ground cell it shadows sits at a horizontal
+        # offset of (physical height) * tan(45) = z_top * (dz / dx) cells from the
+        # occluder. voxel_dim must drive that offset:
+        #   - cubic voxels (and voxel_dim=None) keep aspect 1 -> offset z_top,
+        #   - a voxel 3x taller than wide -> offset 3 * z_top.
+        # Ground sensors (leaf area 0) read the irradiance without shading each
+        # other, so exactly one is in shadow.
+        xo, yo, ztop = 3, 1, 2
+        W, H, Z = 20, 3, 4
+        near_x, far_x = xo + ztop, xo + 3 * ztop  # 5 (aspect 1), 9 (aspect 3)
+
+        def shadowed_x(voxel_dim):
+            sol = SolarPosition(datetime(2024, 6, 15, 20, 00), 40., -120.)
+            sol.light_vector = np.array([np.sqrt(0.5), 0.0, -np.sqrt(0.5)])  # 45 deg, +x, down
+            grid = np.zeros((H, W, Z), dtype=np.float32)
+            grid[yo, xo, ztop] = 10.0  # one strong occluder
+            leaf_area = LeafArea.from_uniformgrid(grid)
+            y = H - yo - 1  # from_uniformgrid flips rows to south->north
+            sensors = [Sensor(near_x, y, 0), Sensor(far_x, y, 0)]
+            env = Environment(leaf_area, voxel_dim=voxel_dim, sensors=sensors)
+            irr = {
+                int(round(row[0])): row[3]
+                for row in attenuate_all(env, sol, extn=0.5).sensor_irradiance
+            }
+            shaded = [x for x, v in irr.items() if v < 0.5]
+            lit = [x for x, v in irr.items() if v > 0.99]
+            assert len(shaded) == 1 and len(lit) == 1, (voxel_dim, irr)
+            return shaded[0]
+
+        # Cubic voxels and None keep the current (aspect-1) geometry.
+        assert shadowed_x(None) == near_x
+        assert shadowed_x((1.0, 1.0, 1.0)) == near_x
+        assert shadowed_x((2.0, 2.0, 2.0)) == near_x
+        # Anisotropic voxels stretch the shadow by the vertical/horizontal aspect.
+        assert shadowed_x((1.0, 1.0, 3.0)) == far_x
+        assert shadowed_x((2.0, 2.0, 6.0)) == far_x
+
     def test_path_length_calculator_1m_down(self, test_env):
         # Test that path length through a 1m^3 voxel with a straight
         # down solar vector is 1.0

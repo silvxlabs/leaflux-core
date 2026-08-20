@@ -499,13 +499,18 @@ class TestGeneral:
         # sun in the x-z plane, the ground cell it shadows sits at a horizontal
         # offset of (physical height) * tan(45) = z_top * (dz / dx) cells from the
         # occluder. voxel_dim must drive that offset:
-        #   - cubic voxels (and voxel_dim=None) keep aspect 1 -> offset z_top,
-        #   - a voxel 3x taller than wide -> offset 3 * z_top.
+        #   - cubic voxels (and voxel_dim=None) keep aspect 1  -> offset z_top,
+        #   - a voxel wider than tall (2x2x1, aspect 1/2)       -> offset z_top / 2,
+        #   - a voxel 3x taller than wide (aspect 3)            -> offset 3 * z_top.
         # Ground sensors (leaf area 0) read the irradiance without shading each
         # other, so exactly one is in shadow.
         xo, yo, ztop = 3, 1, 2
         W, H, Z = 20, 3, 4
-        near_x, far_x = xo + ztop, xo + 3 * ztop  # 5 (aspect 1), 9 (aspect 3)
+        # offset (cells) -> sensor x index, one per aspect the cases below exercise.
+        wide_x = xo + ztop // 2   # 4  (aspect 1/2, e.g. 2x2x1)
+        near_x = xo + ztop        # 5  (aspect 1, cubic / None)
+        far_x = xo + 3 * ztop     # 9  (aspect 3)
+        sensor_x = (wide_x, near_x, far_x)
 
         def shadowed_x(voxel_dim):
             sol = SolarPosition(datetime(2024, 6, 15, 20, 00), 40., -120.)
@@ -514,7 +519,7 @@ class TestGeneral:
             grid[yo, xo, ztop] = 10.0  # one strong occluder
             leaf_area = LeafArea.from_uniformgrid(grid)
             y = H - yo - 1  # from_uniformgrid flips rows to south->north
-            sensors = [Sensor(near_x, y, 0), Sensor(far_x, y, 0)]
+            sensors = [Sensor(x, y, 0) for x in sensor_x]
             env = Environment(leaf_area, voxel_dim=voxel_dim, sensors=sensors)
             irr = {
                 int(round(row[0])): row[3]
@@ -522,14 +527,17 @@ class TestGeneral:
             }
             shaded = [x for x, v in irr.items() if v < 0.5]
             lit = [x for x, v in irr.items() if v > 0.99]
-            assert len(shaded) == 1 and len(lit) == 1, (voxel_dim, irr)
+            assert len(shaded) == 1 and len(lit) == 2, (voxel_dim, irr)
             return shaded[0]
 
         # Cubic voxels and None keep the current (aspect-1) geometry.
         assert shadowed_x(None) == near_x
         assert shadowed_x((1.0, 1.0, 1.0)) == near_x
         assert shadowed_x((2.0, 2.0, 2.0)) == near_x
-        # Anisotropic voxels stretch the shadow by the vertical/horizontal aspect.
+        # A voxel wider than tall (the shipping 2x2x1 case) casts a shallower
+        # shadow -> half the reach of the cubic case.
+        assert shadowed_x((2.0, 2.0, 1.0)) == wide_x
+        # A voxel taller than wide stretches the shadow by the vertical/horizontal aspect.
         assert shadowed_x((1.0, 1.0, 3.0)) == far_x
         assert shadowed_x((2.0, 2.0, 6.0)) == far_x
 

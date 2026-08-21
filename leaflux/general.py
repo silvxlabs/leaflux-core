@@ -354,21 +354,43 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5, origi
         This lets a sub-window of a larger domain reproduce a whole-domain run: give each window the
         offset of its lower-left corner in the global frame. Output coordinates are unchanged (they stay
         in the input's local frame); only the shadow grouping is re-anchored. Default is (0.0, 0.0),
-        which reproduces the un-anchored result exactly.
+        which reproduces the un-anchored result exactly. The offset is in the same index units as the
+        input coordinates and is applied before the voxel-aspect scaling below.
 
     Returns
     -
     Irradiance
         Class containing the resulting relative irradiance for the canopy, the terrain (if provided), and the sensors (if provided).
+
+    Notes
+    -
+    Shadows are cast at the physical solar angle for the voxel dimensions given in
+    `env.voxel_dim`. Coordinates are grid indices, so a non-cubic voxel (e.g. a
+    canopy 2 m wide but 1 m tall) is stretched to physical proportions before the
+    shadow sweep; without voxel dimensions (or with a cubic voxel) coordinates are
+    used as-is. When the horizontal resolutions differ (dx != dy) the shadow angle
+    is still physical, but the sweep's cell buckets are no longer square.
     """
     r = _get_rot_mat(sol.light_vector)
 
     # World offset applied only to rotation inputs, so the floor lattice in rotated
     # space is anchored to a shared global frame (see `origin` above). Outputs use
-    # the original, un-offset coordinates.
+    # the original, un-offset coordinates. Applied in index units, before the
+    # voxel-aspect scaling, so a sub-window reproduces the whole-domain buckets even
+    # when the x-resolution scaling is not 1.
     origin_offset = np.array([origin[0], origin[1], 0.0], dtype=np.float32)
 
-    leaf_area_stack_rot = (r @ (env.leaf_area.leaf_area[:, :3] + origin_offset).T).T # Get rotated x, y, z from LAD grid
+    # The shadow sweep floors rotated coordinates onto a 1x1 lattice, but the
+    # coordinates are grid indices, so the rotation only casts shadows at the
+    # correct physical angle when the voxel is cubic. Scale the index coordinates
+    # by the voxel aspect (normalized by the x-resolution) so the rotation sees
+    # physically-proportioned space. Cubic voxels and voxel_dim=None reduce to no
+    # scaling, leaving the un-scaled result unchanged.
+    voxel_scale = np.array([1.0, 1.0, 1.0], dtype=np.float32)
+    if env.voxel_dim is not None:
+        voxel_scale = np.asarray(env.voxel_dim, dtype=np.float32) / env.voxel_dim[0]
+
+    leaf_area_stack_rot = (r @ ((env.leaf_area.leaf_area[:, :3] + origin_offset) * voxel_scale).T).T # Get rotated x, y, z from LAD grid
 
     # G is set to the provided extn for everything at first
     leaf_g = np.full_like(env.leaf_area.leaf_area[:, 3], fill_value=extn, dtype=np.float32)
@@ -390,7 +412,7 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5, origi
     # Make terrain area array that will hold giant leaf area values
     if env.terrain != None:
         terrain_leaf_area = np.full_like(env.terrain.terrain[:, 0].flatten(), 2000.0, dtype=np.float32) # Make leaf area very high
-        terrain_area_rot_stack = (r @ (env.terrain.terrain[:, :3] + origin_offset).T).T
+        terrain_area_rot_stack = (r @ ((env.terrain.terrain[:, :3] + origin_offset) * voxel_scale).T).T
 
         # Structure and order must match LAD stack
         terrain_area_stack = np.column_stack((
@@ -415,7 +437,7 @@ def attenuate_all(env: Environment, sol: SolarPosition, extn: float = 0.5, origi
     
     if env.sensors is not None:
         # Rotate
-        sensor_rot = (r @ (env.sensors[:, :3] + origin_offset).T).T
+        sensor_rot = (r @ ((env.sensors[:, :3] + origin_offset) * voxel_scale).T).T
         sensor_stack = np.column_stack((
             env.sensors[:, 0].flatten(), # [0] x
             env.sensors[:, 1].flatten(), # [1] y

@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=77.0"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
 [project]
 name = "leaflux"
-version = "0.5.1"
+dynamic = ["version"]
 description = "Core algorithms for the Leaflux project"
 readme = "README.md"
 license = "MIT"
@@ -36,6 +36,11 @@ Homepage = "https://github.com/silvxlabs/leaflux-core"
 [project.optional-dependencies]
 test = ["pytest"]
 
-[tool.setuptools.packages.find]
-where = ["."]
-exclude = ["docs", "test", "data"]
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["leaflux"]
+
+[tool.hatch.build.targets.sdist]
+include = ["leaflux", "README.md", "LICENSE"]
